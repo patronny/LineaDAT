@@ -57,14 +57,24 @@ Variable cost может **удваиваться каждые 22 блока (~4
 - Работает в Uniswap Web App, API, Wallet (iOS/Android rolling out)
 - **Hooks support по умолчанию** (если PoolManager задеплоен — хуки работают)
 
-### ⚠️ Адреса PoolManager / PositionManager / Universal Router
+### ✅ Адреса Uniswap v4 на Linea mainnet — VERIFIED
 
-**Не верифицированы в публичных доках на 2026-05-01.** Канонический deployments page [developers.uniswap.org/contracts/v4/deployments](https://developers.uniswap.org/contracts/v4/deployments) перечисляет 16 mainnet-сетей (Ethereum, Unichain, OP, Base, Arbitrum, Polygon, Blast, Zora, Worldchain, X Layer, Ink, Soneium, Avalanche, BNB, Celo, Monad), но **Linea пока не в этом списке** несмотря на live-анонс.
+Источник: `Uniswap/sdks/sdk-core/src/addresses.ts` (main branch). Каждый адрес проверен `eth_getCode` через `https://rpc.linea.build`.
 
-**Действие до деплоя:**
-1. Открыть `app.uniswap.org` с выбранной Linea, swap-нуть тестовое количество, перехватить контракт-вызов через DevTools/RPC tracing
-2. Open issue в [github.com/Uniswap/v4-core](https://github.com/Uniswap/v4-core) с запросом deployment manifest
-3. Контактировать Uniswap Labs developer relations
+| Контракт | Адрес |
+|---|---|
+| **PoolManager** | `0x248083fb965359d82b06c1f5322480dcfc1ad857` |
+| **PositionManager** | `0xddcad5775b2816a87495f207731b3571d7ee3c76` |
+| **StateView** | `0xe861de206e460a8b936b05ad3816520b58ccdf9b` |
+| **Quoter** | `0x2c125569c0bee20a66e33e5491c552b37ebd9934` |
+| **UniversalRouter V2_1_1** (v4-capable, USE THIS) | `0x8B844f885672f333Bc0042cB669255f93a4C1E6b` |
+| WETH9 | `0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f` |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+| CREATE2 deployer | `0x0000000000FFe8B47B3e2130213B802212439497` |
+
+⚠️ **Linea Sepolia testnet — Uniswap v4 НЕ задеплоен** на 2026-05-01. Тестируем на Sepolia / Base Sepolia / Arbitrum Sepolia.
+
+См. [`research/06-resolved-blockers.md`](../research/06-resolved-blockers.md) для подробностей.
 
 Для сравнения (verified на других сетях, формат адресов будет похож):
 - Ethereum PoolManager: `0x000000000004444c5dC75cB358380D2e3dE08A90`
