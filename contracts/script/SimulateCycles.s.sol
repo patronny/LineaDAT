@@ -4,50 +4,33 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-/// @notice Phase 2 stress test: 1000 random buy/sell cycles on Anvil fork of Linea mainnet.
+/// @notice Phase 2 entry point — points to the actual implementation in test/Stress.t.sol.
 ///
-/// PRE-REQUISITES:
-///   - Anvil fork running: `anvil --fork-url https://rpc.linea.build`
-///   - LINEASTR deployed (via Deploy.s.sol)
-///   - $LINEA balance simulated via vm.deal/vm.prank or impersonating a $LINEA whale
+/// We chose the test-suite approach over a script approach because:
+///   1. Foundry tests have first-class fork support via `vm.createSelectFork` and `--fork-url` flag
+///   2. Cheatcodes (`vm.roll`, `vm.deal`, `deal()` for ERC20s) work seamlessly in tests; in scripts they
+///      only work in non-broadcast mode and require an Anvil fork running separately
+///   3. Test runner provides assertion infrastructure, gas reporting, and CI integration out of the box
 ///
-/// PURPOSE:
-///   Verify the slow-rug invariant doesn't regress: across 1000 random scenarios with varying block deltas,
-///   fees deposits, and bag-buy/sell timings, the protocol never gives a single bot more than `currentFees`,
-///   and `ethToTwap` correctly accumulates from sells.
+/// To run the 1000-cycle stress test against Linea mainnet:
 ///
-/// METRICS LOGGED:
-///   - Cycles executed (target: ≥500 over 1000 iterations)
-///   - Average bot profit per cycle (target: ≥0.03 ETH)
-///   - Average time-to-sell (blocks)
-///   - Total burn (LINEASTR sent to 0xdead)
+///   cd contracts/
+///   forge test --match-contract StressTest --fork-url https://rpc.linea.build -vv
 ///
-/// THIS IS A SCAFFOLD — full implementation depends on the deployed addresses + impersonation patterns
-/// that we set up in Phase 2 after Phase 1 contracts are merged.
+/// The test forks Linea mainnet, deploys LINEASTR infrastructure, uses the canonical $LINEA token
+/// (0x1789e0043623282D5DCc7F213d703C6D8BAfBB04) as underlying, runs 1000 randomized buy/sell/addFees
+/// cycles with mock pool manager and router (real Uniswap v4 swap simulation is Phase 4 scope), and
+/// asserts core invariants every cycle.
+///
+/// Outputs metrics:
+///   - Cycle counts (addFees, buyTokens, sellTokens) and success rates
+///   - Total ETH deposited as fees, total bot profit (gross paid out)
+///   - Average paid per successful buy (slow-rug ramp bound)
+///   - Average time-to-sell in blocks
+///   - Final treasury LINEA balance and ethToTwap accumulator
 contract SimulateCycles is Script {
-    /// @param strategy LINEASTR proxy address (from Deploy.s.sol output)
-    /// @param iterations Total iterations to run (default 1000)
-    function run(address strategy, uint256 iterations) external view {
-        require(strategy != address(0), "Pass strategy address");
-        require(iterations > 0, "Pass iterations");
-
-        // PHASE 2 IMPLEMENTATION SCAFFOLD:
-        // for (uint256 i = 0; i < iterations; i++) {
-        //   vm.roll(block.number + (random() % 10) + 1);
-        //   choice = random() % 4;
-        //   if (choice == 0) doSwap(ETH -> LINEASTR);   // simulated swap, but real PoolManager
-        //   if (choice == 1) doSwap(LINEASTR -> ETH);
-        //   if (choice == 2 && availableFunds() > marketPrice * 1.05) doBuyTokens();
-        //   if (choice == 3 && lastBagId > 0) doSellTokens(randomBag);
-        //   if (ethToTwap > 0.05 ETH) doProcessTokenTwap();
-        //
-        //   assert(currentFees() >= 0);
-        //   assert(ethToTwap() >= 0);
-        //   assert(totalSupply() <= prev_totalSupply); // monotonic decrease via burn
-        // }
-
-        console.log("SimulateCycles scaffold -- implement in Phase 2 after Anvil fork validation");
-        console.log("Strategy:", strategy);
-        console.log("Iterations target:", iterations);
+    function run() external pure {
+        console.log("Phase 2 stress test lives in test/Stress.t.sol.");
+        console.log("Run: forge test --match-contract StressTest --fork-url https://rpc.linea.build -vv");
     }
 }
