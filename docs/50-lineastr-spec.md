@@ -166,17 +166,73 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 | **Стек** | Next.js 15 (App Router) + wagmi v2 + RainbowKit + viem + TailwindCSS |
 | **Хостинг** | Vercel (free tier) |
 | **Domain** | `lineastrategy.com` (купишь за неделю до launch на GoDaddy) |
-| **Структура** | одностраничник: hero (price + supply + burned + treasury holdings) → swap card (ETH↔LINEASTR через UniversalRouter V2_1_1) → buy-target $LINEA card (вызывает наш `buyTokens()` с поддержкой aggregator-route) → recent trades feed → footer |
+| **Структура** | одностраничник: hero (price + supply + burned + treasury holdings) → swap card (ETH↔LINEASTR через UniversalRouter V2_1_1) → **Actions card** (3 кнопки, см. §6.1) → recent trades feed → footer |
 | **Дизайн** | 3 варианта на выбор: (a) Linea-style blue, (b) dark/neon, (c) academic minimalism. Финальный выбор перед mainnet deploy |
+
+### 6.1 Actions card (точная копия паттерна tokenstrategy.com + одна наша добавка)
+
+Три кнопки в один блок:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Actions                                              │
+├─────────────────────────────────────────────────────┤
+│ [1] Sell $LINEA → Strategy                          │
+│     Step 1: Approve $LINEA                          │
+│     Step 2: Sell 150 000 LINEA, get X.XX ETH        │
+│     (показывает premium: «+0.05 ETH vs Etherex»)    │
+├─────────────────────────────────────────────────────┤
+│ [2] Buy bag at 1.2× from Strategy  ← наша добавка   │
+│     Best deal: bag #N, 150 000 LINEA for 0.45 ETH  │
+│     (показывает: «save $X vs market price»)         │
+│     disabled if no profitable bag available         │
+├─────────────────────────────────────────────────────┤
+│ [3] Burn LINEASTR (+0.5% reward)                    │
+│     если ethToTwap = 0 → disabled «No ETH to Burn»  │
+│     иначе active: «Burn min(ethToTwap, 0.05) ETH»  │
+└─────────────────────────────────────────────────────┘
+```
+
+**Кнопка 1 — Sell $LINEA → Strategy.** Эквивалент `Approve $WBTC + buyTokens()` у TokenWorks (см. их UI на скрине пользователя). Двухшаговый flow:
+- Step 1 (`approve`): `LINEA.approve(LINEASTR_PROXY, 150_000e18)` — разово.
+- Step 2 (`buyTokens`): вызов `LINEASTR_PROXY.buyTokens()` — контракт вытягивает 150k LINEA, платит `availableFunds()` ETH юзеру.
+- UI live-читает: `availableFunds` из proxy, `marketPrice(150 000 LINEA)` через GeckoTerminal API + Etherex/Lynex quote, выводит **premium** = разницу. Если premium ≤ 0 — кнопка показывает «Not profitable yet — wait for fees to accumulate» (не disabled, юзер может всё равно нажать).
+
+**Кнопка 2 — Buy bag at 1.2× from Strategy.** Эквивалент `sellTokens(bagId)` — это **наша добавка** (у TokenWorks этого нет в виде отдельной кнопки, у них сделано через список bag'ов). UI:
+- Читает `lastBagId`, потом для каждого `bagId in [1..lastBagId]` вызывает `onSale[bagId]` (read-only).
+- Фильтрует non-zero (= active bag'и в листинге).
+- Считает «у какого `listPrice / 150 000 LINEA` ниже текущей рыночной цены $LINEA» → выводит топ-1.
+- Кнопка вызывает `LINEASTR_PROXY.sellTokens{value: listPrice}(bagId)` — контракт отдаёт 150k LINEA, юзер платит ровно `listPrice`.
+- Если все bag'и невыгодны — кнопка disabled с tooltip «No profitable bag — market price is below Strategy listings».
+- Это **frontend-эквивалент `0xca60e8f0`** (sell-side bag-buyer на WBTCSTR, 77% всех `sellTokens()`). Привлекает органических покупателей $LINEA через стратегию.
+
+**Кнопка 3 — Burn LINEASTR (+0.5% reward).** Точная копия паттерна WBTCSTR. UI:
+- Live-читает `ethToTwap` из proxy.
+- Disabled если `ethToTwap == 0n` с подписью «No ETH to Burn — wait for next bag-sale».
+- Active иначе: «Burn `min(ethToTwap, 0.05) ETH` → buys & burns ≈ X LINEASTR. Reward: `0.5% × min(ethToTwap, 0.05)` ETH ≈ $0.5».
+- Вызывает `LINEASTR_PROXY.processTokenTwap()`.
+
+### 6.2 Live data feed
+
+Источники для всех чисел в UI:
+- On-chain (через wagmi/viem, частота: на каждый block через `watchBlocks`):
+  - `currentFees`, `ethToTwap`, `lastBuyBlock`, `lastBagId`, `availableFunds()`, `getMaxPriceForBuy()` — proxy slots
+  - `LINEA.balanceOf(LINEASTR_PROXY)` — treasury inventory
+  - `totalSupply()` − `balanceOf(0xdead)` — circulating supply (показатель «сколько уже сожжено»)
+  - `onSale[bagId]` для всех active bag'ов
+- Off-chain (REST polling каждые 30 секунд):
+  - GeckoTerminal `/api/v2/networks/linea/tokens/0x1789e004…bb04/pools` — текущая цена $LINEA для расчёта premium
+  - DefiLlama `/coins.llama.fi/prices/current/coingecko:ethereum` — ETH-USD для конвертации
 
 ## 7. Owner и admin policy
 
 | Поле | Значение |
 |---|---|
-| **Owner** | твой Keycard EOA (адрес TBD когда сгенеришь) |
-| **`feeAddress`** | `0x6e0d01089976093680c881CcDcB79e0D046e2433` |
+| **Owner** | **`0x1470c542D60e83EcCFE005332f5789Bd669D027C`** (Keycard EOA пользователя, EIP-55 verified, fresh nonce=0 на Ethereum + Linea на момент 2026-05-01) |
+| **`feeAddress`** | **`0x6e0d01089976093680c881CcDcB79e0D046e2433`** |
 | **Renounce** | **«Никогда» с возможностью в любой момент** — на старте non-renounced, при необходимости (например, если найдут критичный баг и мы успешно его пофиксили) renounce делается одной транзакцией `transferOwnership(0xdead)` или `renounceOwnership()` |
 | **Admin functions, доступные owner** | `updateHookAddress`, `setDistributor`, `_authorizeUpgrade` (UUPS), `setPriceMultiplier` (через factory), `updateBagSize` (только пока `lastBagId == 0`), `setTwapIncrement` (планируется добавить как `onlyOwner` setter поверх v3) |
+| **Pre-launch checklist owner-кошелька** | (1) ≥ 0.05 ETH на Linea для газа deploy + initialize + post-init настроек; (2) ключ хранится только на Keycard, **никогда** не загружается на хост-серверы; (3) для каждой admin-tx — ручная подпись через Keycard ↔ MetaMask flow |
 
 ## 8. Что нужно изменить в v3-сурсах для LINEASTR
 
@@ -250,3 +306,45 @@ proxy.setTwapDelayInBlocks(4);    // 12 секунд на Linea
   - frontend «Buy Target $LINEA» button готова ✓
 - [ ] **Anvil fork test** — 1000 циклов в ускоренной симуляции (jump 100 блоков, mine, проверка инвариантов)
 - [ ] **Base Sepolia public test** — минимум 7 дней, ты тестируешь UI с реального Keycard
+
+## 11. Live benchmark from prototypes (как калибровать ожидания)
+
+Данные RPC-сканом 2026-05-01 (см. [`research/raw-rpc-data/`](../research/raw-rpc-data/)):
+
+### WBTCSTR (108 дней с launch, наш основной прототип)
+
+| Метрика | WBTCSTR | LINEASTR target (90 дней) | Обоснование |
+|---|---|---|---|
+| Cycles `buyTokens` (bag-creates) | 34 | **≥ 45** | наш bot активнее с launch + Linea быстрее (3с vs 12с блоки) |
+| Cycles `sellTokens` (bag-sales) | 22 (= 65% от buy) | **≥ 35** (= 78%) | наш UI с кнопкой «Buy bag at 1.2×» делает sell-flow видимым органическим юзерам |
+| Active bag inventory (unsold) | 12/34 = 35% | **≤ 22%** | sell-side кнопка должна уменьшить «застой» |
+| `processTokenTwap` cycles | 24 | **≥ 30** | reward ($0.5/click на Linea) делает callable рандомными юзерами |
+| Realized protocol profit (ListPrice − PaidPrice) | +1.99 ETH | **≥ +1.5 ETH** | bagSize в 2× меньше у нас, поэтому абсолютная сумма ниже, но cycle frequency выше |
+| Avg cycles/day | 0.31 | **≥ 0.5** | |
+| Avg margin/cycle | +0.090 ETH | **+0.045 ETH** | пропорционально bagSize (0.236 vs 0.45 ETH) |
+
+### Bot leaderboard на WBTCSTR (для сравнения нашего бота)
+
+| Bot | Calls | Доля | Архитектура |
+|---|---|---|---|
+| `0xaf682de1...11f7d` | 13 (38%) | smart-contract bot, профит выводится сразу (баланс 0 ETH) |
+| `0xc31a49d1...1c649` | 3 (9%) | smart-contract bot, держит 19.93 ETH капитала |
+| `0x00000f91...0cac` | 3 (9%) | smart-contract bot (vanity) |
+| `0xe08d97e1...d015` | 2 (6%) | smart-contract bot |
+| 13 разных EOA | 1 каждый (38% в сумме) | random users через UI |
+
+**Вывод:** на WBTCSTR доминирует **smart-contract bot pattern** (62% всех циклов от 4 bot'ов). Наши 2 EOA-бота на старте будут проще, но менее эффективны. План: **в version 2 ботов** перейти на smart-contract pattern (как `0xaf682de1`) — flashbot-like, atomic swap+buyTokens в одной tx.
+
+### Sell-side benchmark
+
+`0xca60e8f0...aa76` купил **17 из 22 bag'ов** (77%) на WBTCSTR за 9.67 ETH. Это **главный sell-side арбитражёр**, который скорее всего использовал список bag'ов через TokenWorks UI. Наша кнопка #2 (`Buy bag at 1.2×`) должна **демократизировать** этот flow для random юзеров.
+
+### Что это значит финансово
+
+При параметрах WBTCSTR-baseline на дистанции 90 дней мы прогнозируем для LINEASTR (после моих корректировок):
+
+- **Treasury growth:** ≥ 1.5 ETH realized profit + 8 × bagSize ≈ 1.2M LINEA в inventory ⇒ **~$2 800 USD в treasury**
+- **Burn cumulative:** ≥ 30 × 0.04 ETH × 2.5M LINEASTR/ETH ≈ **3M LINEASTR сожжено** = 0.3% supply
+- **Bot ROI (наш):** +1.5 ETH / 3 ETH capital = **+50%** за 90 дней — это **достаточно** чтобы покрыть hosting + газ и ещё иметь margin
+
+⚠️ **Предупреждение:** эти цифры основаны на **WBTCSTR baseline**, который сам по себе — относительно мёртвый рынок (0.31 цикла/день). Если LINEASTR получит **больше** интереса (волна meme-buyers, листинг на CEX, etc.) — числа вырастут на ×3–10. Если **меньше** (как REKTSTR, 3 цикла за 5 месяцев) — flywheel будет почти стоять.

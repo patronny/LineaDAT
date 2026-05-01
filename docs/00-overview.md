@@ -33,7 +33,7 @@
 | **Sell-fee** | 10% константа | как у WBTCSTR |
 | **Fee split** | 80% treasury / 10% LINEASTR-burn / 10% creator | технически: 80/10/10 как v3, но 10% LINEASTR-burn redirected в feeAddress пока `collection == LINEASTR_ADDRESS` ⇒ эффективно **80% treasury / 20% creator** на самом $LINEASTR; для будущих strategies на Linea — 80/10/10 normal split |
 | **`feeAddress`** | `0x6e0d01089976093680c881CcDcB79e0D046e2433` | твой адрес для приёма creator-доли |
-| **Owner** | твой Keycard EOA (адрес TBD) | renounce «никогда» с возможностью в любой момент |
+| **Owner** | **`0x1470c542D60e83EcCFE005332f5789Bd669D027C`** (Keycard EOA, EIP-55 verified, fresh nonce=0 на обеих сетях) | renounce «никогда» с возможностью в любой момент |
 | **Pool currency0 / currency1** | `0x0` (native ETH) / LINEASTR | как у WBTCSTR; pool key проверяет `currency0.isAddressZero()` |
 | **Pool fee flag** | `0x800000` (DYNAMIC_FEE_FLAG) | hook рассчитывает fee динамически |
 | **Tick spacing** | 60 | стандартный для dynamic fee |
@@ -48,7 +48,7 @@
 
 ## Что прямо сейчас не залочено
 
-- **Owner адрес** — ты сгенерируешь на Keycard и пришлёшь публичный
+- ~~**Owner адрес**~~ ✅ залочено: `0x1470c542D60e83EcCFE005332f5789Bd669D027C`
 - **Бот-EOA #1, #2** — генерим свежие приваты при настройке fly.io
 - **Когда покупаем `lineastrategy.com`** — за 1 неделю до launch
 - **Дизайн (3 варианта)** — будут после написания контрактов, перед публичным testnet
