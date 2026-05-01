@@ -1,91 +1,79 @@
-# 00. Overview — что строим
+# 00. Overview LINEASTR
 
-## TL;DR
+## Pitch
 
-**LINEASTR (LineaStrategy)** — это ERC-20 токен на Linea L2 с встроенным механизмом автоматической покупки и удержания `$LINEA` через trade-fee и Uniswap v4 hook. Архитектура — прямой форк ERC20Strategy v3 от TokenWorks (то же, что и `wBTCStrategy`), с двумя кастомизациями: другая сеть (Linea вместо Ethereum) и другое распределение fee (без PNKSTR-burn, с 2% разработчику).
+**$LINEASTR** — ERC-20 strategy token на **Linea L2**, который автоматически конвертирует **10% trade-fees** на свой Uniswap v4 пул в **$LINEA**, накапливает их в treasury через P2P-выкупы, и сжигает свой supply через **buy-and-burn** на накопленных продажах. Это «MicroStrategy для $LINEA», но treasury пополняется не через capital-raise, а через DEX-торговлю самим токеном.
 
-## Концепция «Yoyo™» в применении к $LINEA
+Архитектурно — **точная копия `wBTCStrategy` v3** от TokenWorks (Adam Lizek / Rhynotic), переcalibrated под Linea L2 и заменой PNKSTR-burn'а на LINEASTR-burn (с edge-case для self-launch). MIT-форк с атрибуцией.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│         LINEASTR / WETH pool на Uniswap v4 (Linea)          │
-│                                                             │
-│   trader → swap → 10% fee забирает hook                     │
-│                            │                                │
-│       ┌────────────────────┼─────────────────┐              │
-│       ▼                    ▼                 ▼              │
-│   8% treasury        2% dev (mine)        — (нет PNKSTR)    │
-│       │                                                     │
-│       ▼                                                     │
-│   накапливается ETH                                         │
-│       │                                                     │
-│       ▼ (когда хватает на bag)                              │
-│   buyTokens() — swap ETH→LINEA через Uniswap v4             │
-│       │                                                     │
-│       ▼                                                     │
-│   list(price = paid * 1.2)                                  │
-│       │                                                     │
-│       ▼ (внешний buyer выкупает bag за ETH)                 │
-│   sellTokens() → profit ETH                                 │
-│       │                                                     │
-│       ▼                                                     │
-│   buy-and-burn LINEASTR через Uniswap v4 → 0xdead           │
-│       │                                                     │
-│       ▼                                                     │
-│   supply ↓ → price ↑ → больше торгов → больше fee  ⟲        │
-└─────────────────────────────────────────────────────────────┘
-```
+## Что это даёт
 
-## Чем отличается от wBTCStrategy
+- **Держателям $LINEASTR** — токен с дефляционным supply (постоянный buy-and-burn) и обеспечением в виде $LINEA в treasury. Цена WBTCSTR относительно wBTC растёт быстрее, чем wBTC — мы воспроизводим этот механизм для пары LINEASTR/LINEA.
+- **Держателям $LINEA** — постоянный покупатель $LINEA с растущим объёмом (`bagSize = 150 000 LINEA` на каждый цикл). Контракт **никогда не продаёт** $LINEA в обратную сторону.
+- **Linea-экосистеме** — флайвилл, который заводит на L2 новый объём ETH-торговли (volume → fees → underlying-buy → ETH lock в pool).
+- **Создателю** — 20% от trade-fees через `feeAddress` (закодировано через redirect 10% LINEASTR-burn в feeAddress пока `collection == LINEASTR_ADDRESS`).
 
-### Сеть
-- **wBTCStrategy:** Ethereum mainnet (chainId 1)
-- **LINEASTR:** Linea L2 (chainId 59144). Нативный gas-токен — ETH. Linea — Stage-0 zkEVM от Consensys, sequencer централизован, Uniswap v4 запущен 2 апреля 2026.
+## Locked параметры (final)
 
-### Underlying asset (treasury bag)
-- **wBTCStrategy:** wBTC (`0x2260fac5...c2c599`), bagSize = 0.0125 wBTC (8 decimals)
-- **LINEASTR:** $LINEA (`0x1789e004...bb04`, 18 decimals). bagSize нужно подобрать — параметр обсудим на этапе планирования (зависит от текущей цены $LINEA и желаемой частоты циклов).
+| Параметр | Значение | Комментарий |
+|---|---|---|
+| **Сеть** | Linea L2 (chainId 59144) | block-time ≈3 сек |
+| **Underlying** | $LINEA `0x1789e004…bb04` | canonical L2 token |
+| **Token name / symbol** | `LineaStrategy` / **`LINEASTR`** | |
+| **Total supply** | 1 000 000 000 × 10¹⁸ | разовый mint в `initialize`, далее только burn |
+| **Decimals** | 18 | ERC-20 standard |
+| **Initial pool** | single-sided: 0 ETH + 1B LINEASTR | LP-NFT в `0xdead` сразу |
+| **Initial FDV** | ≈ $100 000 | sqrtPriceX96 калибруется под `1 ETH ≈ 40M LINEASTR` (как WBTCSTR) |
+| **`bagSize`** | **150 000 LINEA** ≈ $546 ≈ 0.236 ETH | см. обоснование в `50-lineastr-spec.md` |
+| **`buyIncrement`** | **0.02 ETH/блок** | catch-up time ≈ 12 блоков ≈ 36 секунд при bagSize 0.236 ETH |
+| **`priceMultiplier`** | **1200** (1.2× markup) | как у обоих прототипов |
+| **`twapIncrement`** | **0.05 ETH** | раскачаем руками через `setTwapIncrement` когда пул вырастет |
+| **`twapDelayInBlocks`** | **4** | 12 секунд = эквивалент mainnet (защита от same-block sandwich MEV) |
+| **Buy-fee curve** | 99% → 10% за 89 минут (−100 bps/мин) | как у WBTCSTR (копируем без изменений для траста) |
+| **Sell-fee** | 10% константа | как у WBTCSTR |
+| **Fee split** | 80% treasury / 10% LINEASTR-burn / 10% creator | технически: 80/10/10 как v3, но 10% LINEASTR-burn redirected в feeAddress пока `collection == LINEASTR_ADDRESS` ⇒ эффективно **80% treasury / 20% creator** на самом $LINEASTR; для будущих strategies на Linea — 80/10/10 normal split |
+| **`feeAddress`** | `0x6e0d01089976093680c881CcDcB79e0D046e2433` | твой адрес для приёма creator-доли |
+| **Owner** | твой Keycard EOA (адрес TBD) | renounce «никогда» с возможностью в любой момент |
+| **Pool currency0 / currency1** | `0x0` (native ETH) / LINEASTR | как у WBTCSTR; pool key проверяет `currency0.isAddressZero()` |
+| **Pool fee flag** | `0x800000` (DYNAMIC_FEE_FLAG) | hook рассчитывает fee динамически |
+| **Tick spacing** | 60 | стандартный для dynamic fee |
+| **Hook permissions** | `beforeInitialize \| afterAddLiquidity \| afterSwap \| afterSwapReturnDelta` | как у v3 |
+| **Bot working capital** | **3 ETH суммарно** (2 на A + 1 на B) | conservative mode: `availableFunds() ≥ marketPrice × 1.10` |
+| **Bot hosting** | fly.io (multi-region: A в EU, B в US) | ~$10/мес |
+| **Frontend стек** | Next.js 15 + wagmi v2 + RainbowKit + viem + Tailwind | хост Vercel |
+| **Domain** | `lineastrategy.com` (купишь перед launch) | |
+| **Дизайн** | 3 варианта на выбор → выбор перед merge | копия структуры tokenstrategy.com, другая палитра |
+| **Тестнет** | Phase 1: Anvil fork Linea mainnet, Phase 2: Base Sepolia public | финальный deploy на Linea mainnet |
+| **MIT атрибуция** | header «based on TokenWorks ERC20Strategy v3 (MIT)» в каждом .sol файле | |
 
-### Fee distribution
-- **wBTCStrategy:** 10% total → 8% protocol / 1% feeAddress / **1% PNKSTR-burn**
-- **LINEASTR:** 10% total → **8% protocol** / **2% dev** / **0% (нет PNKSTR-burn)**
-  - 8% — накопление ETH для покупки $LINEA в treasury
-  - 2% — разработчику (мне) на адрес, заданный при деплое
-  - PNKSTR-burn механизм полностью удаляется из хука — это снижает gas-cost каждого swap и упрощает аудит
+## Что прямо сейчас не залочено
 
-### Authorship & ownership
-- TokenStrategy на Ethereum — TokenWorks-controlled deployment, owner — `0x019817ad...e8cb` (TokenWorks deployer EOA)
-- LINEASTR — single-deployer (мой адрес), без launchpad, без factory-paywall
+- **Owner адрес** — ты сгенерируешь на Keycard и пришлёшь публичный
+- **Бот-EOA #1, #2** — генерим свежие приваты при настройке fly.io
+- **Когда покупаем `lineastrategy.com`** — за 1 неделю до launch
+- **Дизайн (3 варианта)** — будут после написания контрактов, перед публичным testnet
 
-### Audit posture
-Ровно как у TokenStrategy — **без формального paid-аудита**. Но (в отличие от Rhynotic, который фиксил баги через wrapper'ы поверх renounced контрактов) мы:
-1. Учтём все 5 публично известных багов TokenWorks **в исходном коде до деплоя**
-2. Прогоним Slither + Aderyn + manual review
-3. Не будем renounce ownership сразу — оставим 30–90 дней emergency multisig pause для критических хук-функций
+## Roadmap (после lock параметров)
 
-## Что мы НЕ делаем
+1. **Этап 2 — контракты:** форк ERC20Strategy v3, патч `_processFees` (PNKSTR → LINEASTR-burn + edge-case redirect), параметры под Linea, MIT-header
+2. **Этап 3 — Anvil fork:** локально гоняем 100+ циклов, Foundry tests, slither + aderyn
+3. **Этап 4 — Base Sepolia:** публичный testnet, ты тестируешь UI с Keycard, я ловлю баги бота
+4. **Этап 5 — Frontend:** копия tokenstrategy.com structure, 3 варианта дизайна на выбор
+5. **Этап 6 — Mainnet deploy:** деплой контрактов на Linea, seed 1B LINEASTR в pool, LP-NFT в dead, бот включается в момент `deploymentTime` ts
+6. **Этап 7 — Live monitoring:** dashboard в Discord webhook (циклы, P&L бота, treasury growth)
 
-- **Не делаем launchpad** для других токенов. LINEASTR — single-token deployment.
-- **Не делаем cross-chain.** Только Linea.
-- **Не интегрируемся с PNKSTR / TokenStrategy.** Полностью независимая экосистема.
-- **Не платим аудиторам.** Бюджет — нулевой (как и у Rhynotic при запуске PunkStrategy).
+## Сравнение прототипов рядом
 
-## Известные риски (фиксируем сразу)
+| | REKTSTR (v2) | WBTCSTR (v3) | LINEASTR (forked v3) |
+|---|---|---|---|
+| Версия | 2 | 3 | 3 (форк) |
+| Network | Ethereum mainnet | Ethereum mainnet | **Linea L2** |
+| Underlying | REKT (мем-токен) | wBTC (BitGo) | **$LINEA (Consensys)** |
+| Launch | 2025-12-13 00:06 UTC | 2026-01-13 22:00 UTC | TBD (Этап 6) |
+| bagSize $-eq | $6 232 | $1 250 | **$546** |
+| Owner status сейчас | НЕ renounced | НЕ renounced | non-renounced from launch |
+| Аудит | нет | нет | нет (slither + aderyn + manual) |
 
-1. **Точные адреса Uniswap v4 PoolManager на Linea не индексированы публично.** Линковка идёт через `app.uniswap.org` — на момент деплоя верифицируем через RPC eth_call к factory.
-2. **Linea Stage-0** — sequencer централизован, withdraw L2→L1 = 8–32ч, контракты bridge instantly upgradable. Это влияет на trust-assumption для держателей.
-3. **Uniswap v4 на Linea запущен только 4 недели назад** (на 2026-05-01) — **наш токен может стать первым публичным v4-hook деплоем на Linea**. Плюс — first-mover advantage; минус — нет battle-tested precedent.
-4. **$LINEA — высокоинфляционный токен** (10-летний vesting на 75% supply). Treasury из $LINEA будет постепенно девальвироваться по supply, но not по absolute holdings. Нужно учесть в комуникации.
+## Атрибуция
 
-## Что дальше
-
-Этот repo — research-stage. Следующий шаг — обсудить:
-- **bagSize** для $LINEA (X $LINEA = Y ETH eq на момент launch)
-- **priceMultiplier** — оставлять 1.2x или менять
-- **Initial fee curve** — 95% → 10% за 85min vs более мягкую 50% → 10% за 30min
-- **Total supply LINEASTR** — оставлять 1B или другое
-- **Ownership / multisig** структуру до renounce
-- **Бот для buy-target** — сразу с launch (обязательно — урок инцидента 2 от TokenWorks)
-- **Тесты на Linea Sepolia** перед mainnet
-
-См. также [`docs/05-lessons-applied.md`](05-lessons-applied.md).
+LINEASTR — MIT-форк ERC20Strategy v3 от **TokenWorks** (`@token_works` / [token.works](https://token.works)). Лид: **Adam Lizek** (`@Rhynotic`). Юр.лицо: **Token Workshop, Inc.** Все TokenWorks-исходники verified на Etherscan / Sourcify под MIT.
