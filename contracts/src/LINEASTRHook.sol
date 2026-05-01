@@ -1,0 +1,405 @@
+// SPDX-License-Identifier: MIT
+// Based on TokenWorks ERC20StrategyHook v3 (MIT). Original: token.works
+pragma solidity ^0.8.26;
+
+import {BaseHook} from "@uniswap/v4-periphery/src/utils/BaseHook.sol";
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {SafeCast} from "@uniswap/v4-core/src/libraries/SafeCast.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {CurrencySettler} from "@uniswap/v4-core/test/utils/CurrencySettler.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {IValidRouter} from "./Interfaces.sol";
+import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
+import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import "./Interfaces.sol";
+
+/// @title LINEASTRHook - Uniswap V4 Hook for LINEASTR strategy ecosystem
+/// @author Based on TokenWorks ERC20StrategyHook v3 (MIT)
+/// @notice This hook manages fee collection and distribution for LINEASTR-family pools on Uniswap V4 (Linea L2)
+/// @dev Implements dynamic fee structure (99%→10% over 89min) and 80/10/10 fee split.
+///      Edge case: when collection == lineastrAddress (the LINEASTR self-launch), the 10% LINEASTR-burn share
+///      is redirected to feeAddress (creator) since the strategy can't buy-and-burn its own token recursively.
+contract LINEASTRHook is BaseHook, ReentrancyGuard {
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™                ™™™™™™™™™™™                ™™™™™™™™™™™ */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™               ™™™™™™™™™™™™™              ™™™™™™™™™™  */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™              ™™™™™™™™™™™™™              ™™™™™™™™™™™  */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™             ™™™™™™™™™™™™™™            ™™™™™™™™™™™   */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™            ™™™™™™™™™™™™™™™            ™™™™™™™™™™™   */
+    /*                ™™™™™™™™™™™            ™™™™™™™™™™™           ™™™™™™™™™™™™™™™           ™™™™™™™™™™™    */
+    /*                ™™™™™™™™™™™             ™™™™™™™™™™          ™™™™™™™™™™™™™™™™™          ™™™™™™™™™™™    */
+    /*                ™™™™™™™™™™™             ™™™™™™™™™™          ™™™™™™™™™™™™™™™™™          ™™™™™™™™™™     */
+    /*                ™™™™™™™™™™™              ™™™™™™™™™™        ™™™™™™™™™™™™™™™™™™™        ™™™™™™™™™™™     */
+    /*                ™™™™™™™™™™™              ™™™™™™™™™™™       ™™™™™™™™™ ™™™™™™™™™       ™™™™™™™™™™™      */
+    /*                ™™™™™™™™™™™               ™™™™™™™™™™      ™™™™™™™™™™ ™™™™™™™™™™      ™™™™™™™™™™™      */
+    /*                ™™™™™™™™™™™               ™™™™™™™™™™      ™™™™™™™™™   ™™™™™™™™™      ™™™™™™™™™™       */
+    /*                ™™™™™™™™™™™                ™™™™™™™™™™    ™™™™™™™™™™    ™™™™™™™™™    ™™™™™™™™™™        */
+    /*                ™™™™™™™™™™™                 ™™™™™™™™™™   ™™™™™™™™™     ™™™™™™™™™™  ™™™™™™™™™™™        */
+    /*                ™™™™™™™™™™™                 ™™™™™™™™™™  ™™™™™™™™™™     ™™™™™™™™™™  ™™™™™™™™™™         */
+    /*                ™™™™™™™™™™™                  ™™™™™™™™™™™™™™™™™™™™       ™™™™™™™™™™™™™™™™™™™™          */
+    /*                ™™™™™™™™™™™                   ™™™™™™™™™™™™™™™™™™         ™™™™™™™™™™™™™™™™™™           */
+    /*                ™™™™™™™™™™™                   ™™™™™™™™™™™™™™™™™™         ™™™™™™™™™™™™™™™™™™           */
+    /*                ™™™™™™™™™™™                    ™™™™™™™™™™™™™™™™           ™™™™™™™™™™™™™™™™            */
+    /*                ™™™™™™™™™™™                     ™™™™™™™™™™™™™™             ™™™™™™™™™™™™™™             */
+    /*                ™™™™™™™™™™™                     ™™™™™™™™™™™™™™             ™™™™™™™™™™™™™™             */
+    /*                ™™™™™™™™™™™                      ™™™™™™™™™™™™               ™™™™™™™™™™™™              */
+
+    using PoolIdLibrary for PoolKey;
+    using StateLibrary for IPoolManager;
+    using CurrencySettler for Currency;
+    using SafeCast for uint256;
+    using SafeCast for int128;
+
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+    /*                      CONSTANTS                      */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+
+    /// @notice Total basis points for percentage calculations
+    uint128 private constant TOTAL_BIPS = 10000;
+    /// @notice Default fee rate (10%)
+    uint128 private constant DEFAULT_FEE = 1000;
+    /// @notice Starting buy fee rate (99%) - decreases over time
+    uint128 private constant STARTING_BUY_FEE = 9900;
+    /// @notice Seconds per minute for time calculations
+    uint256 private constant SECONDS_PER_MINUTE = 60;
+    /// @notice Maximum price limit for swaps
+    uint160 private constant MAX_PRICE_LIMIT = TickMath.MAX_SQRT_PRICE - 1;
+    /// @notice Minimum price limit for swaps
+    uint160 private constant MIN_PRICE_LIMIT = TickMath.MIN_SQRT_PRICE + 1;
+
+    /// @notice The LINEASTR token address — used for the self-launch edge case in `_processFees`.
+    /// @dev When `collection == lineastrAddress`, the 10% LINEASTR-burn share is redirected to feeAddress
+    ///      because the strategy can't recursively buy-and-burn its own token through itself.
+    ///      For all other strategies (future tokens on Linea), the 10% is sent to factory for ETH→LINEASTR swap → 0xdead.
+    address public immutable lineastrAddress;
+    /// @notice The LINEASTR strategy factory contract
+    ILineastrFactory immutable lineastrFactory;
+    /// @notice The Uniswap V4 Pool Manager
+    IPoolManager immutable manager;
+    /// @notice Default address to receive protocol fees
+    address public feeAddress;
+
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+    /*                   STATE VARIABLES                   */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+
+    /// @notice Mapping of collection addresses to their deployment timestamps
+    mapping(address => uint256) public deploymentTime;
+    /// @notice Mapping of collection addresses to custom fee recipient addresses
+    mapping(address => address) public feeAddressClaimedByOwner;
+
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+    /*                    CUSTOM ERRORS                    */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+
+    /// @notice Caller is not an authorized strategy contract
+    error NotStrategy();
+    /// @notice Caller is not the strategy factory owner
+    error NotStrategyFactoryOwner();
+    /// @notice Invalid or unrecognized collection address
+    error InvalidCollection();
+    /// @notice Caller is not the owner of the strategy collection
+    error NotCollectionOwner();
+    /// @notice Restrict ExactOutput swaps
+    error ExactOutputNotAllowed();
+
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+    /*                    CUSTOM EVENTS                    */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+
+    /// @notice Emitted when fees are collected from a swap
+    event HookFee(bytes32 indexed id, address indexed sender, uint128 feeAmount0, uint128 feeAmount1);
+    /// @notice Emitted when a trade occurs in a strategy pool
+    event Trade(address indexed strategy, uint160 sqrtPriceX96, int128 ethAmount, int128 tokenAmount);
+
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+    /*                     CONSTRUCTOR                     */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+
+    /// @notice Constructor initializes the hook with required dependencies
+    /// @param _poolManager The Uniswap V4 Pool Manager interface
+    /// @param _lineastrAddress The LINEASTR token address (sentinel for self-launch edge case)
+    /// @param _lineastrFactory The strategy factory contract (also receives ETH for buy-and-burn LINEASTR on future strategies)
+    /// @param _feeAddress Default address to receive protocol fees if `feeAddressClaimedByOwner[collection]` is unset
+    /// @dev Sets up immutable references to core contracts
+    constructor(
+        IPoolManager _poolManager,
+        address _lineastrAddress,
+        ILineastrFactory _lineastrFactory,
+        address _feeAddress
+    ) BaseHook(_poolManager) {
+        manager = _poolManager;
+        lineastrAddress = _lineastrAddress;
+        lineastrFactory = _lineastrFactory;
+        feeAddress = _feeAddress;
+    }
+
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+    /*                     FUNCTIONS                       */
+    /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
+
+    /// @notice Updates the default fee address for receiving protocol fees
+    /// @param _feeAddress New address to receive fees
+    /// @dev Only callable by the strategy factory owner
+    function updateFeeAddress(address _feeAddress) external {
+        if (msg.sender != lineastrFactory.owner()) revert NotStrategyFactoryOwner();
+        feeAddress = _feeAddress;
+    }
+
+    /// @notice Updates the fee address for a specific strategy
+    /// @param strategy The strategy contract address
+    /// @param destination New address to receive creator fees for this strategy
+    /// @dev Only callable by the underlying token owner (e.g. for community-launched strategies)
+    function updateFeeAddressForCollection(address strategy, address destination) external {
+        address collection = lineastrFactory.startegyToToken(strategy);
+        if (collection == address(0)) revert InvalidCollection();
+        if (IERC20(collection).owner() != msg.sender) revert NotCollectionOwner();
+        feeAddressClaimedByOwner[strategy] = destination;
+    }
+
+    /// @notice Updates the fee address for a strategy by admin or factory
+    /// @param strategy The strategy contract address
+    /// @param destination New address to receive fees for this strategy
+    /// @dev Only callable by factory owner or the factory contract itself.
+    ///      Used for the LINEASTR self-launch (where underlying $LINEA is canonical and not owner-controlled).
+    function adminUpdateFeeAddress(address strategy, address destination) external {
+        if (msg.sender != lineastrFactory.owner() && msg.sender != address(lineastrFactory)) {
+            revert NotStrategyFactoryOwner();
+        }
+        feeAddressClaimedByOwner[strategy] = destination;
+    }
+
+    /// @notice Process fees directly - distributes immediately according to LINEASTR fee split
+    /// @param collection The strategy contract address (= LINEASTR proxy or future strategy proxy)
+    /// @param feeAmount Amount of ETH fees to distribute
+    /// @dev Split: 80% strategy treasury, 10% LINEASTR-burn (or feeAddress on self-launch), 10% creator (or treasury if unset).
+    ///      EDGE CASE: when collection == lineastrAddress (the LINEASTR self-launch), the 10% LINEASTR-burn share is
+    ///      redirected to feeAddress (creator) because the strategy can't recursively buy-and-burn its own token.
+    ///      For all other strategies, 10% goes to factory which performs ETH→LINEASTR swap → 0xdead burn.
+    function _processFees(address collection, uint256 feeAmount) internal {
+        if (feeAmount == 0) return;
+
+        // Calculate 80% strategy treasury, 10% LINEASTR-burn, 10% creator
+        uint256 depositAmount = (feeAmount * 80) / 100;
+        uint256 lineastrAmount = (feeAmount * 10) / 100;
+        uint256 ownerAmount = feeAmount - depositAmount - lineastrAmount;
+
+        // === LINEASTR self-launch edge case ===
+        // When the collection is the LINEASTR token itself, we can't recursively buy-and-burn,
+        // so the 10% LINEASTR-burn share is redirected to feeAddress (creator).
+        // For all other future strategies, factory receives ETH and performs ETH→LINEASTR swap → 0xdead.
+        if (collection == lineastrAddress) {
+            SafeTransferLib.forceSafeTransferETH(feeAddress, lineastrAmount);
+        } else {
+            SafeTransferLib.forceSafeTransferETH(address(lineastrFactory), lineastrAmount);
+        }
+
+        // If feeAddressClaimedByOwner[collection] is unset, add to depositAmount, otherwise send to that address
+        address feeRecipient = feeAddressClaimedByOwner[collection];
+        if (feeRecipient == address(0)) {
+            depositAmount += ownerAmount;
+        } else {
+            SafeTransferLib.forceSafeTransferETH(feeRecipient, ownerAmount);
+        }
+
+        // Deposit fees into strategy treasury
+        IStrategy(collection).addFees{value: depositAmount}();
+    }
+
+    /// @notice Calculates current fee based on deployment timestamp and swap direction
+    /// @param collection The NFTStrategy collection address
+    /// @param isBuying True if buying tokens (ETH -> tokens), false if selling
+    /// @return Current fee in basis points
+    /// @dev Buy fees decrease over time from 99% to 10%, sell fees are constant 10%
+    function calculateFee(address collection, bool isBuying) public view returns (uint128) {
+        if (!isBuying) return DEFAULT_FEE;
+
+        uint256 deployedAt = deploymentTime[collection];
+        if (deployedAt == 0) return DEFAULT_FEE;
+
+        uint256 timePassed = block.timestamp - deployedAt;
+        uint256 minutesPassed = timePassed / SECONDS_PER_MINUTE;
+        uint256 feeReductions = minutesPassed * 100; // 100 bips per minute
+
+        uint256 maxReducible = STARTING_BUY_FEE - DEFAULT_FEE; // assumes invariant holds
+        if (feeReductions >= maxReducible) return DEFAULT_FEE;
+
+        return uint128(STARTING_BUY_FEE - feeReductions);
+    }
+
+    /// @notice Returns the hook's permissions for the Uniswap V4 pool
+    /// @return Hooks.Permissions struct indicating which hooks are enabled
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: true,
+            afterInitialize: false,
+            beforeAddLiquidity: false,
+            afterAddLiquidity: true,
+            beforeRemoveLiquidity: false,
+            afterRemoveLiquidity: false,
+            beforeSwap: false,
+            afterSwap: true,
+            beforeDonate: false,
+            afterDonate: false,
+            beforeSwapReturnDelta: false,
+            afterSwapReturnDelta: true,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
+    }
+
+    /// @notice Validates initialization of a new pool
+    /// @param key The pool key containing currency pair and hook information
+    /// @return Selector indicating successful hook execution
+    /// @dev Only allows ETH/token pools and validates call is from NFTStrategyFactory
+    function _beforeInitialize(address, PoolKey calldata key, uint160) internal override returns (bytes4) {
+        require(key.currency0.isAddressZero(), "Only ETH/token pools are supported");
+        // Ensure the call is coming from NFTStrategyFactory
+        if (!lineastrFactory.loadingLiquidity()) {
+            revert NotStrategy();
+        }
+
+        // Get token1 from the pool key and store its deployment timestamp
+        address collection = Currency.unwrap(key.currency1);
+        deploymentTime[collection] = block.timestamp;
+
+        return BaseHook.beforeInitialize.selector;
+    }
+
+    /// @notice Validates liquidity addition to a pool
+    /// @param key The pool key containing currency pair information
+    /// @param delta The balance changes from the liquidity addition
+    /// @return Hook selector and zero delta
+    /// @dev Only allows liquidity addition during factory loading, sets transfer allowance
+    function _afterAddLiquidity(
+        address,
+        PoolKey calldata key,
+        ModifyLiquidityParams calldata,
+        BalanceDelta delta,
+        BalanceDelta,
+        bytes calldata
+    ) internal override returns (bytes4, BalanceDelta) {
+        // Ensure the call is coming from NFTStrategyFactory
+        if (!lineastrFactory.loadingLiquidity()) {
+            revert NotStrategy();
+        } else {
+            // we are loading liquidity so admit a transfer allowance
+            // safe casting, liquidity additions are -values
+            IStrategy(Currency.unwrap(key.currency1)).increaseTransferAllowance(uint256(int256(-delta.amount1())));
+        }
+        return (BaseHook.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
+    }
+
+    /// @notice Processes swap events and takes the swap fee
+    /// @param sender The address initiating the call (router)
+    /// @param key The pool key containing token pair and fee information
+    /// @param params Swap parameters including direction and amount
+    /// @param delta Balance changes resulting from the swap
+    /// @return Hook selector and fee amount taken
+    /// @dev Calculates dynamic fees, takes fee from swap, and distributes to recipients
+    function _afterSwap(
+        address sender,
+        PoolKey calldata key,
+        SwapParams calldata params,
+        BalanceDelta delta,
+        bytes calldata
+    ) internal override returns (bytes4, int128) {
+        // Restrict Exact Out
+        if (params.amountSpecified > 0) {
+            revert ExactOutputNotAllowed();
+        }
+
+        // Calculate fee based on the swap amount
+        bool specifiedTokenIs0 = (params.amountSpecified < 0 == params.zeroForOne);
+        (Currency feeCurrency, int128 swapAmount) =
+            (specifiedTokenIs0) ? (key.currency1, delta.amount1()) : (key.currency0, delta.amount0());
+
+        if (swapAmount < 0) swapAmount = -swapAmount;
+
+        bool ethFee = Currency.unwrap(feeCurrency) == address(0);
+        address collection = Currency.unwrap(key.currency1);
+
+        uint128 currentFee = calculateFee(collection, params.zeroForOne);
+        uint256 feeAmount = uint128(swapAmount) * currentFee / TOTAL_BIPS;
+
+        // regardless if NFTSTR is inbound or outbound from PoolManager, we need to set the transfer allowance
+        uint256 collectionAmountToTransfer =
+            delta.amount1() < 0 ? uint256(int256(-delta.amount1())) : uint256(int256(delta.amount1()));
+
+        if (feeAmount == 0) {
+            IStrategy(collection).increaseTransferAllowance(collectionAmountToTransfer);
+            return (BaseHook.afterSwap.selector, 0);
+        }
+
+        // account for "fees-in-NFTSTR" for the transfer allowance
+        // for exact inputs (ETH --> ??? NFTSTR) the fee is skimmed from delta.amount1() but its transferred to the hook
+        collectionAmountToTransfer += (feeCurrency == key.currency1) ? feeAmount : 0;
+
+        // for exact outputs because we are taking a surplus fee to the hook and then swapping again
+        // i.e. PoolManager --feeAmount--> Hook --feeAmount--> PoolManager
+        collectionAmountToTransfer += (feeCurrency == key.currency1 && 0 < params.amountSpecified) ? feeAmount * 2 : 0;
+
+        IStrategy(collection).increaseTransferAllowance(collectionAmountToTransfer);
+
+        manager.take(feeCurrency, address(this), feeAmount);
+
+        // Emit the HookFee event, after taking the fee
+        emit HookFee(
+            PoolId.unwrap(key.toId()), sender, ethFee ? uint128(feeAmount) : 0, ethFee ? 0 : uint128(feeAmount)
+        );
+
+        // Handle fee token deposit or conversion
+        if (!ethFee) {
+            uint256 feeInETH = _swapToEth(key, feeAmount);
+            _processFees(collection, feeInETH);
+        } else {
+            // Fee amount is in ETH
+            _processFees(collection, feeAmount);
+        }
+
+        // Get current price and emit
+        emit Trade(collection, _getCurrentPrice(key), delta.amount0(), delta.amount1());
+
+        return (BaseHook.afterSwap.selector, feeAmount.toInt128());
+    }
+
+    /// @notice Swaps tokens to ETH for fee processing
+    /// @param key The pool key for the swap
+    /// @param amount The amount of tokens to swap
+    /// @return The amount of ETH received from the swap
+    /// @dev Internal function to convert token fees to ETH before distribution
+    function _swapToEth(PoolKey memory key, uint256 amount) internal returns (uint256) {
+        uint256 ethBefore = address(this).balance;
+
+        BalanceDelta delta = manager.swap(
+            key,
+            SwapParams({zeroForOne: false, amountSpecified: -int256(amount), sqrtPriceLimitX96: MAX_PRICE_LIMIT}),
+            bytes("")
+        );
+
+        // Handle token settlements, it's ALWAYS a oneForZero swap
+        key.currency1.settle(poolManager, address(this), uint256(int256(-delta.amount1())), false);
+        key.currency0.take(poolManager, address(this), uint256(int256(delta.amount0())), false);
+
+        return address(this).balance - ethBefore;
+    }
+
+    /// @notice Gets the current price of a token pair from the pool
+    /// @param key The pool key containing the token pair and pool parameters
+    /// @return The current sqrtPriceX96 from slot0
+    /// @dev Reads the current price from the pool's slot0 storage
+    function _getCurrentPrice(PoolKey calldata key) internal view returns (uint160) {
+        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
+        return sqrtPriceX96;
+    }
+
+    /// @notice Allows the contract to receive ETH
+    receive() external payable {}
+}
