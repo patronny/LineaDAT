@@ -1,0 +1,39 @@
+import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import { Providers } from "./providers";
+import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
+
+export const metadata: Metadata = {
+  title: "LINEASTR — Linea-Backed Token Strategy",
+  description:
+    "LINEASTR is a deflationary token strategy on Linea L2. Buy and sell bags through a P2P mechanism with built-in slow-rug protection. The protocol burns LINEASTR on every cycle.",
+  metadataBase: new URL("https://lineastrategy.com"),
+  openGraph: {
+    title: "LINEASTR",
+    description: "Linea-backed deflationary token strategy on Linea L2",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#fbf8f3" },
+  ],
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
