@@ -1,6 +1,5 @@
 "use client";
 
-import { Card } from "./ui/card";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { formatEth, formatTokens } from "@/lib/utils";
 
@@ -31,11 +30,7 @@ export function FundingsCard() {
     totalSupply > 0n ? (Number((bagSize * 10000n) / totalSupply) / 100).toFixed(2) : "0.00";
 
   return (
-    <Card>
-      <div className="px-4 sm:px-5 py-3 border-b border-border">
-        <h3 className="font-display font-semibold text-sm uppercase tracking-wider">Fundings</h3>
-      </div>
-
+    <>
       <div className="p-4 sm:p-5 space-y-4">
         <div>
           <div className="text-xs text-muted-foreground">$LINEASTR is currently holding</div>
@@ -80,6 +75,6 @@ export function FundingsCard() {
           />
         </div>
       </div>
-    </Card>
+    </>
   );
 }

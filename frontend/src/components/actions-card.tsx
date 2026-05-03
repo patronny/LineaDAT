@@ -1,7 +1,6 @@
 "use client";
 
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { erc20Abi } from "@/lib/abis/erc20";
@@ -69,11 +68,7 @@ export function ActionsCard() {
   }
 
   return (
-    <Card>
-      <div className="px-4 sm:px-5 py-3 border-b border-border">
-        <h3 className="font-display font-semibold text-sm uppercase tracking-wider">Actions</h3>
-      </div>
-      <div className="p-4 sm:p-5 space-y-2">
+    <div className="p-4 sm:p-5 space-y-2">
         {!approved ? (
           <Button
             variant="secondary"
@@ -124,7 +119,6 @@ export function ActionsCard() {
               ? "Claiming..."
               : "Faucet — claim 100k tLINEA"}
         </Button>
-      </div>
-    </Card>
+    </div>
   );
 }

@@ -1,0 +1,5 @@
+{
+  "strategy": "0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2",
+  "bot": "0x5CAbfF553d8D7B9564CceE758A22b58c850d23Fc",
+  "buyThresholdWei": "1000000000000000"
+}

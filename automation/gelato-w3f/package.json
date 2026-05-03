@@ -1,0 +1,15 @@
+{
+  "name": "lineastr-gelato-w3f",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npx w3f test lineastr-keeper/index.ts --logs",
+    "build": "npx w3f build lineastr-keeper/index.ts",
+    "deploy": "npx w3f deploy lineastr-keeper/index.ts"
+  },
+  "dependencies": {
+    "@gelatonetwork/web3-functions-sdk": "^2.4.0",
+    "ethers": "^6.13.0"
+  }
+}

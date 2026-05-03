@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { parseEther } from "viem";
 import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
-import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { swapperAbi, hookAbi } from "@/lib/abis/swapper";
@@ -90,14 +89,7 @@ export function SwapCard() {
   }
 
   return (
-    <Card>
-      <div className="px-4 sm:px-5 py-3 border-b border-border flex items-center justify-between">
-        <h3 className="font-display font-semibold text-sm uppercase tracking-wider">Swap</h3>
-        <span className="text-xs text-muted-foreground font-mono">
-          Balance: {formatTokens(userLin)} LINEASTR
-        </span>
-      </div>
-
+    <>
       <div className="p-4 sm:p-5 space-y-3">
         {/* Selling */}
         <div className="rounded-md border border-border bg-secondary/30 p-3 space-y-2">
@@ -184,6 +176,6 @@ export function SwapCard() {
           {feePercent.toFixed(feePercent < 100 && feePercent !== Math.floor(feePercent) ? 2 : 0)}% on this swap
         </span>
       </div>
-    </Card>
+    </>
   );
 }
