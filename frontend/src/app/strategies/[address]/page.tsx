@@ -1,107 +1,85 @@
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { StrategyStatsHero } from "@/components/strategy-stats";
-import { BagsForSaleClient } from "@/components/bags-for-sale";
-import { ActivityFeedClient } from "@/components/activity-feed";
-import { TradeWidgetClient } from "@/components/trade-widget";
-import { SwapHistoryTable } from "@/components/swap-history";
+import { StrategyHeader } from "@/components/strategy-header";
+import { ChartPlaceholder } from "@/components/chart-placeholder";
+import { HoldingsTable } from "@/components/holdings-table";
+import { SalesTable } from "@/components/sales-table";
+import { SwapCard } from "@/components/swap-card";
+import { FundingsCard } from "@/components/fundings-card";
+import { BurnedCard } from "@/components/burned-card";
+import { ActionsCard } from "@/components/actions-card";
 import { Card } from "@/components/ui/card";
 
 /**
- * /strategies/[address] — full replica of tokenstrategy.com/strategies/0x... but adapted to LINEASTR/tLINEA.
+ * /strategies/[address] — full clone of tokenstrategy.com/strategies/0x... layout,
+ * adapted to LINEASTR + Base Sepolia testnet pool data.
  *
- * Layout (desktop, ≥1024px):
- *
+ * Layout (lg+):
  *   ┌─────────────────────────────────────────────────────────┐
- *   │ Header (sticky)                                         │
+ *   │ Header                                                  │
  *   ├─────────────────────────────────────────────────────────┤
- *   │ Strategy hero: name + symbol + address + chain badge    │
- *   ├─────────────────────────────────────────────────────────┤
- *   │ 4-tile stats grid (StrategyStatsHero)                   │
+ *   │ Strategy header card: logo, name, chain, inline stats   │
  *   ├──────────────────────────────────────┬──────────────────┤
- *   │ LEFT: Bags for sale + Activity feed  │ RIGHT: Trade     │
- *   │   (66%)                              │   widget (33%)   │
+ *   │ LEFT (66%):                          │ RIGHT (33%):     │
+ *   │   - Chart card                       │   - Swap card    │
+ *   │   - Holdings table                   │   - Fundings     │
+ *   │   - Sales table                      │   - Burned       │
+ *   │                                      │   - Actions      │
  *   └──────────────────────────────────────┴──────────────────┘
  *
- * Mobile (<768px):
- *   - Stat tiles 2x2
- *   - Trade widget moves up (above bags) for thumb-reach access
- *   - Bags + activity become collapsible accordions
+ * Mobile: everything stacks single column. Swap moves to top for thumb-reach.
  */
 export default async function StrategyPage({ params }: { params: Promise<{ address: string }> }) {
-  const { address } = await params;
+  await params; // address read for routing only — strategy is hardcoded in env
   return (
     <>
       <Header />
 
-      <main className="min-h-[calc(100vh-3.5rem)] py-6 sm:py-10">
+      <main className="min-h-[calc(100vh-3.5rem)] py-4 sm:py-6">
         <div className="container">
-          {/* Strategy header */}
-          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/30 font-mono uppercase tracking-wider">
-                  Base Sepolia
-                </span>
-                <span className="text-xs text-muted-foreground font-mono">{address}</span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-display font-bold">
-                LINEASTR
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                Backed by $LINEA. 20% markup per cycle. Burned forever.
-              </p>
-            </div>
+          <StrategyHeader />
+
+          {/* MOBILE: Swap surfaces above tables for thumb-reach */}
+          <div className="lg:hidden mb-4 sm:mb-6">
+            <SwapCard />
           </div>
 
-          {/* Stats hero — 4 tiles */}
-          <StrategyStatsHero />
-
-          {/* MOBILE: Trade widget appears first (above bags + activity) */}
-          <div className="lg:hidden mb-6">
-            <TradeWidgetClient />
-          </div>
-
-          {/* DESKTOP: Two-column layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* Left column: Bags for sale + Activity feed */}
+            {/* LEFT */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              <ChartPlaceholder />
               <Card>
-                <div className="p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-display font-semibold mb-4">
-                    Bags for sale
-                  </h2>
-                  <BagsForSaleClient />
+                <div className="px-4 sm:px-5 py-3 border-b border-border">
+                  <h2 className="font-display font-semibold text-sm uppercase tracking-wider">Holdings</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Bags currently listed for sale. Buy any bag at the listed price; ETH goes back to the
+                    strategy and the bag size of tLINEA goes to your wallet.
+                  </p>
                 </div>
+                <HoldingsTable />
               </Card>
-
               <Card>
-                <div className="p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-display font-semibold mb-4">
-                    Buy bags
-                  </h2>
-                  <ActivityFeedClient />
+                <div className="px-4 sm:px-5 py-3 border-b border-border">
+                  <h2 className="font-display font-semibold text-sm uppercase tracking-wider">Sales</h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Past bag sales. Profit = sold-for minus what the bot paid (1.2× markup target).
+                  </p>
                 </div>
+                <SalesTable />
               </Card>
             </div>
 
-            {/* Right column: Trade widget (desktop only) */}
-            <div className="hidden lg:block">
-              <div className="sticky top-24">
-                <TradeWidgetClient />
+            {/* RIGHT */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Desktop: Swap is at the top of the right column */}
+              <div className="hidden lg:block">
+                <SwapCard />
               </div>
+              <FundingsCard />
+              <BurnedCard />
+              <ActionsCard />
             </div>
           </div>
-
-          {/* Bottom: last 10 swap transactions */}
-          <Card className="mt-4 sm:mt-6">
-            <div className="p-4 sm:p-6">
-              <h2 className="text-lg sm:text-xl font-display font-semibold mb-4">
-                Last swaps
-              </h2>
-              <SwapHistoryTable />
-            </div>
-          </Card>
         </div>
       </main>
 

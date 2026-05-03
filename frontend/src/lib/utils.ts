@@ -61,3 +61,29 @@ export function isMobile(): boolean {
   if (typeof window === "undefined") return false;
   return window.innerWidth < 768;
 }
+
+/**
+ * Convert sqrtPriceX96 to LINEASTR-per-ETH ratio (Q64.96 → float).
+ */
+export function sqrtPriceX96ToRatio(sqrt: bigint): number {
+  if (sqrt === 0n) return 0;
+  const Q96 = 2 ** 96;
+  const sqrtFloat = Number(sqrt) / Q96;
+  return sqrtFloat * sqrtFloat;
+}
+
+/** ETH per 1 LINEASTR (inverse of pool price). */
+export function lineastrPriceInEth(sqrt: bigint | undefined): number {
+  if (!sqrt || sqrt === 0n) return 0;
+  const r = sqrtPriceX96ToRatio(sqrt);
+  return r > 0 ? 1 / r : 0;
+}
+
+/** Date formatter matching the reference layout: M/D/YYYY - HH:MM AM/PM */
+export function formatTradeDate(unixSec: number): string {
+  if (!unixSec) return "—";
+  const d = new Date(unixSec * 1000);
+  const date = d.toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${date} - ${time}`;
+}

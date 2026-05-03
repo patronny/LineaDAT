@@ -3,6 +3,7 @@
 import { useReadContracts } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { erc20Abi } from "@/lib/abis/erc20";
+import { poolManagerAbi, POOL_MANAGER_ADDR, POOL_SLOT0 } from "@/lib/abis/poolmanager";
 import { ADDR } from "@/lib/wagmi";
 
 /**
@@ -31,6 +32,8 @@ export function useStrategyStats() {
       { address: ADDR.tLINEA, abi: erc20Abi, functionName: "balanceOf", args: [ADDR.strategy] },
       // Burn counter: LINEASTR balance held by 0x...dEaD (TWAP burns + future strategy buy-and-burn)
       { address: ADDR.strategy, abi: strategyAbi, functionName: "balanceOf", args: ["0x000000000000000000000000000000000000dEaD"] },
+      // Pool slot0 — packs sqrtPriceX96 (low 160 bits) + tick + protocolFee + lpFee.
+      { address: POOL_MANAGER_ADDR, abi: poolManagerAbi, functionName: "extsload", args: [POOL_SLOT0] },
     ],
     query: {
       refetchInterval: 12_000,
@@ -65,6 +68,10 @@ export function useStrategyStats() {
     maxPriceForBuy: data[14].result as bigint,
     treasuryUnderlying: data[15].result as bigint,
     burned: data[16].result as bigint,
+    slot0: data[17].result as `0x${string}`,
+    sqrtPriceX96: data[17].result
+      ? BigInt(data[17].result as `0x${string}`) & ((1n << 160n) - 1n)
+      : 0n,
   };
 
   return { data: stats, isLoading, error, refetch };
