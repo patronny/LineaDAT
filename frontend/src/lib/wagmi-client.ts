@@ -2,7 +2,7 @@
 
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { baseSepolia, linea } from "wagmi/chains";
-import { http } from "viem";
+import { http, fallback } from "viem";
 
 /**
  * Client-only wagmi + RainbowKit configuration.
@@ -17,16 +17,25 @@ const wcProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
   "00000000000000000000000000000000";
 
+// Base Sepolia RPC fallback chain — primary endpoint flapped (ERR_CONNECTION_CLOSED)
+// in May 2026, blanking the dashboard. viem `fallback` rotates on failure and on
+// detected divergence; the first responsive endpoint wins. Override the whole list
+// by setting NEXT_PUBLIC_RPC_URL.
+const baseSepoliaRpcs = process.env.NEXT_PUBLIC_RPC_URL
+  ? [http(process.env.NEXT_PUBLIC_RPC_URL)]
+  : [
+      http("https://sepolia.base.org"),
+      http("https://base-sepolia-rpc.publicnode.com"),
+      http("https://base-sepolia.public.blastapi.io"),
+      http("https://base-sepolia.drpc.org"),
+    ];
+
 export const config = getDefaultConfig({
   appName: "LINEASTR",
   projectId: wcProjectId,
   chains: [baseSepolia, linea],
   transports: {
-    [baseSepolia.id]: http(
-      // publicnode has no getLogs range limit (drpc free tier caps at 10k blocks).
-      // For production with high traffic, set NEXT_PUBLIC_RPC_URL to an Alchemy/Infura URL.
-      process.env.NEXT_PUBLIC_RPC_URL || "https://base-sepolia-rpc.publicnode.com"
-    ),
+    [baseSepolia.id]: fallback(baseSepoliaRpcs, { rank: false, retryCount: 2 }),
     [linea.id]: http("https://rpc.linea.build"),
   },
   ssr: true,
