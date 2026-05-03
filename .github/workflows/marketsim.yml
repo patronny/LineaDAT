@@ -9,7 +9,7 @@ name: LINEASTR Market Simulator
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 min (48 rounds per 24h)
+    - cron: "*/10 * * * *"   # every 10 min (144 rounds per 24h) — compressed test cadence
   workflow_dispatch:
     inputs:
       action:
@@ -20,7 +20,7 @@ on:
         options: [auto, buy, sell]
 
 env:
-  MAX_RUNS: "48"             # 48 × 30min = 24h observation
+  MAX_RUNS: "144"            # 144 × 10min = 24h compressed observation
   RPC_URL: "https://base-sepolia-rpc.publicnode.com"
 
 jobs:

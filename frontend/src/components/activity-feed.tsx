@@ -3,36 +3,24 @@
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
-import { ADDR, txUrl } from "@/lib/wagmi";
+import { ADDR, txUrl, addressUrl } from "@/lib/wagmi";
 import { formatEth, formatTokens, shortAddress } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 
-type Activity =
-  | { kind: "BoughtByProtocol"; bagId: bigint; paid: bigint; listPrice: bigint; tx: string; block: bigint }
-  | { kind: "SoldByProtocol"; bagId: bigint; price: bigint; buyer: string; tx: string; block: bigint }
-  | { kind: "BoughtAndBurned"; amount0: bigint; amount1: bigint; tx: string; block: bigint }
-  | { kind: "Swap"; ethDelta: bigint; tokenDelta: bigint; tx: string; block: bigint };
-
-const hookTradeAbi = [
-  {
-    type: "event",
-    name: "Trade",
-    inputs: [
-      { name: "strategy", type: "address", indexed: true },
-      { name: "sqrtPriceX96", type: "uint160", indexed: false },
-      { name: "ethAmount", type: "int128", indexed: false },
-      { name: "tokenAmount", type: "int128", indexed: false },
-    ],
-  },
-] as const;
+type BagEvent =
+  | { kind: "Created"; bagId: bigint; paid: bigint; listPrice: bigint; tx: string; block: bigint }
+  | { kind: "Purchased"; bagId: bigint; price: bigint; buyer: string; tx: string; block: bigint };
 
 /**
- * Fetches the last ~50 strategy events and renders them as a chronological feed.
- * Mobile: stacked cards. Desktop: timeline-style list.
+ * "Buy bags" feed — bag lifecycle only:
+ *   - Created: bot.executeRound bought a fresh bag of tLINEA at price X, listed at 1.2× X
+ *   - Purchased: a user redeemed a listed bag for ETH at price Y
+ *
+ * Generic Uniswap swaps live in the SwapHistoryTable below.
  */
 export function ActivityFeedClient() {
   const client = usePublicClient();
-  const [items, setItems] = useState<Activity[]>([]);
+  const [items, setItems] = useState<BagEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +35,7 @@ export function ActivityFeedClient() {
         // drpc.org free tier limits getLogs to 10k blocks. 5k = ~3h on Base Sepolia.
         const fromBlock = latest > 5_000n ? latest - 5_000n : 0n;
 
-        const [bought, sold, burned, swaps] = await Promise.all([
+        const [bought, sold] = await Promise.all([
           client!.getContractEvents({
             address: ADDR.strategy,
             abi: strategyAbi,
@@ -62,29 +50,12 @@ export function ActivityFeedClient() {
             fromBlock,
             toBlock: latest,
           }),
-          client!.getContractEvents({
-            address: ADDR.strategy,
-            abi: strategyAbi,
-            eventName: "BoughtAndBurned",
-            fromBlock,
-            toBlock: latest,
-          }),
-          ADDR.hook && ADDR.hook !== "0x0000000000000000000000000000000000000000"
-            ? client!.getContractEvents({
-                address: ADDR.hook,
-                abi: hookTradeAbi,
-                eventName: "Trade",
-                args: { strategy: ADDR.strategy },
-                fromBlock,
-                toBlock: latest,
-              })
-            : Promise.resolve([]),
         ]);
 
-        const all: Activity[] = [];
+        const all: BagEvent[] = [];
         for (const e of bought) {
           all.push({
-            kind: "BoughtByProtocol",
+            kind: "Created",
             bagId: e.args.bagId as bigint,
             paid: e.args.purchasePrice as bigint,
             listPrice: e.args.listPrice as bigint,
@@ -94,7 +65,7 @@ export function ActivityFeedClient() {
         }
         for (const e of sold) {
           all.push({
-            kind: "SoldByProtocol",
+            kind: "Purchased",
             bagId: e.args.bagId as bigint,
             price: e.args.price as bigint,
             buyer: e.args.buyer as string,
@@ -102,28 +73,10 @@ export function ActivityFeedClient() {
             block: e.blockNumber,
           });
         }
-        for (const e of burned) {
-          all.push({
-            kind: "BoughtAndBurned",
-            amount0: e.args.amount0 as bigint,
-            amount1: e.args.amount1 as bigint,
-            tx: e.transactionHash,
-            block: e.blockNumber,
-          });
-        }
-        for (const e of swaps) {
-          all.push({
-            kind: "Swap",
-            ethDelta: BigInt(e.args.ethAmount as bigint | number),
-            tokenDelta: BigInt(e.args.tokenAmount as bigint | number),
-            tx: e.transactionHash,
-            block: e.blockNumber,
-          });
-        }
         all.sort((a, b) => Number(b.block - a.block));
         setItems(all.slice(0, 50));
       } catch (err) {
-        console.error("Activity fetch failed:", err);
+        console.error("BuyBags fetch failed:", err);
       } finally {
         setIsLoading(false);
       }
@@ -145,16 +98,20 @@ export function ActivityFeedClient() {
   }
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground py-6 text-center">No activity yet.</p>;
+    return <p className="text-sm text-muted-foreground py-6 text-center">No bag purchases yet.</p>;
   }
 
   return (
     <ul className="divide-y divide-border">
       {items.map((item, idx) => (
         <li key={`${item.tx}-${idx}`} className="py-3 flex items-start gap-3">
-          <div className="flex-shrink-0 w-2 h-2 rounded-full mt-2 bg-primary" />
+          <div
+            className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+              item.kind === "Purchased" ? "bg-primary" : "bg-muted-foreground"
+            }`}
+          />
           <div className="flex-1 min-w-0">
-            <ActivityRow item={item} />
+            <BagRow item={item} />
             <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
               <span className="font-mono">block #{String(item.block)}</span>
               <a
@@ -174,44 +131,28 @@ export function ActivityFeedClient() {
   );
 }
 
-function ActivityRow({ item }: { item: Activity }) {
-  if (item.kind === "BoughtByProtocol") {
+function BagRow({ item }: { item: BagEvent }) {
+  if (item.kind === "Created") {
     return (
       <p className="text-sm">
-        <span className="font-semibold">Bag #{String(item.bagId)} bought</span> by bot for{" "}
-        <span className="font-mono tabular">{formatEth(item.paid)} ETH</span> — listed at{" "}
+        <span className="font-semibold">Bag #{String(item.bagId)} created</span> — bot bought tLINEA for{" "}
+        <span className="font-mono tabular">{formatEth(item.paid)} ETH</span>, listed at{" "}
         <span className="font-mono tabular">{formatEth(item.listPrice)} ETH</span>
       </p>
     );
   }
-  if (item.kind === "SoldByProtocol") {
-    return (
-      <p className="text-sm">
-        <span className="font-semibold">Bag #{String(item.bagId)} sold</span> to{" "}
-        <span className="font-mono">{shortAddress(item.buyer)}</span> for{" "}
-        <span className="font-mono tabular">{formatEth(item.price)} ETH</span>
-      </p>
-    );
-  }
-  if (item.kind === "BoughtAndBurned") {
-    return (
-      <p className="text-sm">
-        <span className="font-semibold">Burn:</span> bought and burned{" "}
-        <span className="font-mono tabular">{formatTokens(item.amount1 < 0n ? -item.amount1 : item.amount1)} LINEASTR</span>
-      </p>
-    );
-  }
-  // Swap: positive eth = ETH added to pool (buy LINEASTR); positive token = LINEASTR added to pool (sell)
-  // The hook emits delta from the pool's perspective.
-  const isBuy = item.ethDelta > 0n;
-  const ethAbs = item.ethDelta < 0n ? -item.ethDelta : item.ethDelta;
-  const tokAbs = item.tokenDelta < 0n ? -item.tokenDelta : item.tokenDelta;
   return (
     <p className="text-sm">
-      <span className="font-semibold">{isBuy ? "Buy" : "Sell"}:</span>{" "}
-      <span className="font-mono tabular">{formatEth(ethAbs)} ETH</span>{" "}
-      <span className="text-muted-foreground">{isBuy ? "→" : "←"}</span>{" "}
-      <span className="font-mono tabular">{formatTokens(tokAbs)} LINEASTR</span>
+      <span className="font-semibold">Bag #{String(item.bagId)} purchased</span> for{" "}
+      <span className="font-mono tabular">{formatEth(item.price)} ETH</span> by{" "}
+      <a
+        href={addressUrl(item.buyer)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-mono hover:text-foreground"
+      >
+        {shortAddress(item.buyer)}
+      </a>
     </p>
   );
 }

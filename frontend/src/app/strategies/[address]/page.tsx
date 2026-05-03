@@ -78,7 +78,7 @@ export default async function StrategyPage({ params }: { params: Promise<{ addre
               <Card>
                 <div className="p-4 sm:p-6">
                   <h2 className="text-lg sm:text-xl font-display font-semibold mb-4">
-                    Recent activity
+                    Buy bags
                   </h2>
                   <ActivityFeedClient />
                 </div>
@@ -97,7 +97,7 @@ export default async function StrategyPage({ params }: { params: Promise<{ addre
           <Card className="mt-4 sm:mt-6">
             <div className="p-4 sm:p-6">
               <h2 className="text-lg sm:text-xl font-display font-semibold mb-4">
-                Recent swaps
+                Last swaps
               </h2>
               <SwapHistoryTable />
             </div>
