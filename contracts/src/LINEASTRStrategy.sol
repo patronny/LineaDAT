@@ -6,6 +6,13 @@ import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {BaseStrategy} from "./BaseStrategy.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 /// @title LINEASTRStrategy - An ERC20 strategy token backed by $LINEA on Linea L2
 /// @author Based on TokenWorks ERC20Strategy v3 (MIT)
@@ -156,6 +163,68 @@ contract LINEASTRStrategy is BaseStrategy {
         require(to != address(0), "Invalid recipient");
         isDistributor[to] = true;
         _transfer(factory(), to, amount);
+    }
+
+    /// @notice Override TWAP burn path to use PoolManager.unlock instead of router().
+    /// @dev Phase 3.5 testnet fix. Inherited BaseStrategy.processTokenTwap calls
+    ///      router().swapExactTokensForTokens which is the v4-router interface; the
+    ///      Base Sepolia UniversalRouter at 0x492E...4104 only exposes execute(commands,
+    ///      inputs) and reverts on the v4-router selector. Phase 4 mainnet must replace
+    ///      this with a proper UniversalRouter call once the right router is deployed
+    ///      with the v4-router-compatible interface (or migrate to v4-router lib's UR04).
+    function processTokenTwap() external override nonReentrant {
+        if (ethToTwap == 0) revert NoETHToTwap();
+        if (block.number < lastTwapBlock + twapDelayInBlocks) revert TwapDelayNotMet();
+
+        uint256 burnAmount = twapIncrement;
+        if (ethToTwap < twapIncrement) burnAmount = ethToTwap;
+
+        uint256 reward = (burnAmount * 5) / 1000;
+        burnAmount -= reward;
+
+        ethToTwap -= burnAmount + reward;
+        lastTwapBlock = block.number;
+
+        // Swap ETH -> LINEASTR via PoolManager.unlock; takes LINEASTR straight to dead.
+        poolManager().unlock(abi.encode(burnAmount));
+
+        SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
+    }
+
+    /// @notice PoolManager unlock callback for processTokenTwap. NOT for general use.
+    function unlockCallback(bytes calldata raw) external returns (bytes memory) {
+        if (msg.sender != address(poolManager())) revert OnlyHook(); // re-using existing error
+        uint256 burnAmount = abi.decode(raw, (uint256));
+
+        PoolKey memory key = PoolKey({
+            currency0: Currency.wrap(address(0)),
+            currency1: Currency.wrap(address(this)),
+            fee: 0x800000, // DYNAMIC_FEE_FLAG
+            tickSpacing: 60,
+            hooks: IHooks(hookAddress)
+        });
+
+        SwapParams memory params = SwapParams({
+            zeroForOne: true,
+            amountSpecified: -int256(burnAmount),
+            sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+        });
+
+        BalanceDelta delta = poolManager().swap(key, params, "");
+        int128 amount0 = delta.amount0();
+        int128 amount1 = delta.amount1();
+
+        // Settle ETH owed to the pool
+        if (amount0 < 0) {
+            poolManager().settle{value: uint256(uint128(-amount0))}();
+        }
+        // Take LINEASTR straight to dead address — burns supply
+        if (amount1 > 0) {
+            poolManager().take(key.currency1, DEAD_ADDRESS, uint256(uint128(amount1)));
+        }
+
+        emit BoughtAndBurned(int256(amount0), int256(amount1));
+        return "";
     }
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
