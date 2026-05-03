@@ -7,7 +7,7 @@ import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useEthPrice } from "@/hooks/useEthPrice";
 import { hookAbi } from "@/lib/abis/swapper";
 import { ADDR } from "@/lib/wagmi";
-import { lineastrPriceInEth } from "@/lib/utils";
+import { lineastrPriceInEth, getEventsChunked } from "@/lib/utils";
 
 /**
  * Big strategy header card matching tokenstrategy.com reference.
@@ -19,25 +19,21 @@ export function StrategyHeader() {
   const client = usePublicClient();
   const [vol24h, setVol24h] = useState<bigint>(0n);
 
-  // Aggregate ETH-side volume from hook Trade events (last 5000 blocks ≈ 3h, capped by drpc).
+  // Aggregate ETH-side volume from hook Trade events (last ~24h via chunked queries).
   useEffect(() => {
     if (!client || ADDR.hook === "0x0000000000000000000000000000000000000000") return;
     let cancelled = false;
     async function fetch() {
       try {
-        const latest = await client!.getBlockNumber();
-        const fromBlock = latest > 5_000n ? latest - 5_000n : 0n;
-        const events = await client!.getContractEvents({
+        const events = await getEventsChunked(client!, {
           address: ADDR.hook,
           abi: hookAbi,
           eventName: "Trade",
           args: { strategy: ADDR.strategy },
-          fromBlock,
-          toBlock: latest,
         });
         let total = 0n;
         for (const e of events) {
-          const eth = BigInt(e.args.ethAmount as bigint | number);
+          const eth = BigInt((e as { args: { ethAmount: bigint | number } }).args.ethAmount);
           total += eth < 0n ? -eth : eth;
         }
         if (!cancelled) setVol24h(total);
@@ -103,8 +99,8 @@ export function StrategyHeader() {
           <Stat label="$LINEASTR" value={fmtPriceUsd(pricePerLineastrUsd)} />
           <Stat label="Market Cap" value={fmtUsdLarge(marketCapUsd)} />
           <Stat label="FDV" value={fmtUsdLarge(fdvUsd)} />
-          <Stat label="3h Volume" value={fmtUsdLarge(vol24hUsd)} />
-          <Stat label="3h Change" value="—" muted />
+          <Stat label="24h Volume" value={fmtUsdLarge(vol24hUsd)} />
+          <Stat label="24h Change" value="—" muted />
         </div>
       </div>
     </Card>

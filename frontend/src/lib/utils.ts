@@ -1,5 +1,44 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { PublicClient } from "viem";
+
+// Re-export of viem's getContractEvents return shape for one event — components
+// import GetContractEventsReturnType<TAbi, TEventName> directly from viem when
+// they need precise typing on chunked event reads.
+
+/**
+ * Fetch contract events across a wide block range by splitting into chunks.
+ * Public RPCs cap eth_getLogs at 1k–10k blocks; we hit them in parallel and merge.
+ * Failed chunks are silently dropped so a single transient error doesn't blank the table.
+ *
+ * Caller-provided generic R is the row shape returned by viem's typed getContractEvents
+ * for the specific abi/eventName combination — pass it explicitly at the call site.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getEventsChunked<R = any>(
+  client: PublicClient,
+  params: Record<string, unknown>,
+  options: { totalRange?: bigint; chunkSize?: bigint } = {}
+): Promise<R[]> {
+  const totalRange = options.totalRange ?? 50_000n;
+  const chunkSize = options.chunkSize ?? 9_000n;
+  const latest = await client.getBlockNumber();
+  const start = latest > totalRange ? latest - totalRange : 0n;
+  const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
+  for (let from = start; from <= latest; from += chunkSize) {
+    const to = from + chunkSize - 1n > latest ? latest : from + chunkSize - 1n;
+    ranges.push({ fromBlock: from, toBlock: to });
+  }
+  const settled = await Promise.allSettled(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ranges.map((r) => (client.getContractEvents as any)({ ...params, ...r }))
+  );
+  const out: R[] = [];
+  for (const s of settled) {
+    if (s.status === "fulfilled") out.push(...(s.value as R[]));
+  }
+  return out;
+}
 
 /**
  * Tailwind class merger — combines clsx for conditional logic with tailwind-merge for conflict resolution.

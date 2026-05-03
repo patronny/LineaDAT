@@ -5,7 +5,7 @@ import { usePublicClient } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ADDR, txUrl } from "@/lib/wagmi";
-import { formatEth, formatTokens, formatTradeDate } from "@/lib/utils";
+import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 
@@ -38,22 +38,16 @@ export function SalesTable() {
     let cancelled = false;
     async function fetchSales() {
       try {
-        const latest = await client!.getBlockNumber();
-        const fromBlock = latest > 5_000n ? latest - 5_000n : 0n;
         const [bought, sold] = await Promise.all([
-          client!.getContractEvents({
+          getEventsChunked(client!, {
             address: ADDR.strategy,
             abi: strategyAbi,
             eventName: "ERC20BoughtByProtocol",
-            fromBlock,
-            toBlock: latest,
           }),
-          client!.getContractEvents({
+          getEventsChunked(client!, {
             address: ADDR.strategy,
             abi: strategyAbi,
             eventName: "ERC20SoldByProtocol",
-            fromBlock,
-            toBlock: latest,
           }),
         ]);
 

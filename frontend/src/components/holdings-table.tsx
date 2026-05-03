@@ -5,7 +5,7 @@ import { usePublicClient, useReadContracts, useWriteContract, useAccount } from 
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ADDR } from "@/lib/wagmi";
-import { formatEth, formatTokens, formatTradeDate } from "@/lib/utils";
+import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 
@@ -39,14 +39,10 @@ export function HoldingsTable() {
     let cancelled = false;
     async function fetchBags() {
       try {
-        const latest = await client!.getBlockNumber();
-        const fromBlock = latest > 5_000n ? latest - 5_000n : 0n;
-        const events = await client!.getContractEvents({
+        const events = await getEventsChunked(client!, {
           address: ADDR.strategy,
           abi: strategyAbi,
           eventName: "ERC20BoughtByProtocol",
-          fromBlock,
-          toBlock: latest,
         });
         const enriched: BagRow[] = await Promise.all(
           events.map(async (e) => {

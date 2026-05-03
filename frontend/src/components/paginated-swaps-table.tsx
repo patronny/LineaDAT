@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { hookAbi } from "@/lib/abis/swapper";
 import { ADDR, txUrl, addressUrl } from "@/lib/wagmi";
-import { formatEth, formatTokens, shortAddress, formatTradeDate } from "@/lib/utils";
+import { formatEth, formatTokens, shortAddress, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 
@@ -33,15 +33,11 @@ export function PaginatedSwapsTable() {
     let cancelled = false;
     async function fetchSwaps() {
       try {
-        const latest = await client!.getBlockNumber();
-        const fromBlock = latest > 5_000n ? latest - 5_000n : 0n;
-        const events = await client!.getContractEvents({
+        const events = await getEventsChunked(client!, {
           address: ADDR.hook,
           abi: hookAbi,
           eventName: "Trade",
           args: { strategy: ADDR.strategy },
-          fromBlock,
-          toBlock: latest,
         });
         const sorted = [...events].sort((a, b) => Number(b.blockNumber - a.blockNumber));
         const enriched: SwapRow[] = await Promise.all(
