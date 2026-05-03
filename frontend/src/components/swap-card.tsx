@@ -7,7 +7,8 @@ import { Button } from "./ui/button";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { swapperAbi, hookAbi } from "@/lib/abis/swapper";
 import { ADDR, POOL_KEY } from "@/lib/wagmi";
-import { formatEth, formatTokens } from "@/lib/utils";
+import { formatEth, formatTokens, sqrtPriceX96ToRatio } from "@/lib/utils";
+import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ArrowDown } from "lucide-react";
 
 /**
@@ -48,6 +49,10 @@ export function SwapCard() {
   const feeBps = feeBpsRaw ?? (side === "buy" ? 9900n : 1000n);
   const feePercent = Number(feeBps) / 100;
 
+  const { data: stats } = useStrategyStats();
+  // Pool ratio = LINEASTR-per-ETH (token1 / token0). Used to estimate output.
+  const poolRatio = stats?.sqrtPriceX96 ? sqrtPriceX96ToRatio(stats.sqrtPriceX96) : 0;
+
   let amountWei = 0n;
   let valid = false;
   try {
@@ -57,6 +62,27 @@ export function SwapCard() {
     }
   } catch {
     valid = false;
+  }
+
+  // Estimate output amount from pool ratio + hook fee.
+  // buy:  ETH in  → LINEASTR out = amountIn * poolRatio * (1 - feeBps/10000)
+  // sell: LIN in  → ETH out      = amountIn / poolRatio * (1 - feeBps/10000)
+  let estimatedOut = "";
+  if (valid && poolRatio > 0) {
+    const amountInFloat = Number(amountWei) / 1e18;
+    const feeMul = Math.max(0, 1 - Number(feeBps) / 10000);
+    const out = side === "buy"
+      ? amountInFloat * poolRatio * feeMul
+      : (amountInFloat / poolRatio) * feeMul;
+    if (out > 0 && Number.isFinite(out)) {
+      if (side === "buy") {
+        estimatedOut = out >= 1
+          ? out.toLocaleString("en-US", { maximumFractionDigits: 2 })
+          : out.toFixed(6);
+      } else {
+        estimatedOut = out >= 0.0001 ? out.toFixed(6) : out.toExponential(2);
+      }
+    }
   }
 
   const userEth = ethBalance?.value ?? 0n;
@@ -145,7 +171,7 @@ export function SwapCard() {
           <div className="text-xs text-muted-foreground">Buying</div>
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <span className="flex-1 min-w-0 w-0 text-xl sm:text-2xl font-mono tabular text-muted-foreground truncate">
-              {valid ? "≈ output" : "0.0"}
+              {valid ? (estimatedOut ? `≈ ${estimatedOut}` : "…") : "0.0"}
             </span>
             <span className="flex-shrink-0 font-semibold text-sm font-mono">{buyingLabel}</span>
           </div>
