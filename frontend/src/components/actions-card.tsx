@@ -45,8 +45,10 @@ export function ActionsCard() {
   const twapReady = ethToTwap > 0n;
 
   const bagSize = stats?.bagSize ?? 0n;
+  const availableFunds = stats?.availableFunds ?? 0n;
   const enoughT = (tlineaBal ?? 0n) >= bagSize;
   const approved = (tlineaAllowance ?? 0n) >= bagSize;
+  const canSellBag = approved && enoughT && availableFunds > 0n;
 
   const cooldown = 3600;
   const last = Number(lastFaucet ?? 0n);
@@ -55,6 +57,9 @@ export function ActionsCard() {
 
   function approveTlinea() {
     writeContract({ address: ADDR.tLINEA, abi: erc20Abi, functionName: "approve", args: [ADDR.strategy, bagSize] });
+  }
+  function sellBag() {
+    writeContract({ address: ADDR.strategy, abi: strategyAbi, functionName: "buyTokens" });
   }
   function triggerTwap() {
     writeContract({ address: ADDR.strategy, abi: strategyAbi, functionName: "processTokenTwap" });
@@ -79,8 +84,18 @@ export function ActionsCard() {
             {!enoughT ? "Get tLINEA from faucet first" : isPending ? "Approving..." : "Approve $tLINEA"}
           </Button>
         ) : (
-          <Button variant="secondary" className="w-full" disabled>
-            $tLINEA approved ✓
+          <Button
+            className="w-full"
+            onClick={sellBag}
+            disabled={!isConnected || isPending || !canSellBag}
+          >
+            {availableFunds === 0n
+              ? "No fees yet — wait for next bot round"
+              : !enoughT
+                ? "Need 150k tLINEA to sell a bag"
+                : isPending
+                  ? "Selling bag..."
+                  : `Sell 150k tLINEA bag → ${formatEth(availableFunds)} ETH`}
           </Button>
         )}
 

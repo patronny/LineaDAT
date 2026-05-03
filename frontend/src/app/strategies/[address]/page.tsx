@@ -1,7 +1,7 @@
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { StrategyHeader } from "@/components/strategy-header";
-import { ChartPlaceholder } from "@/components/chart-placeholder";
+import { PriceChart } from "@/components/price-chart";
 import { HoldingsTable } from "@/components/holdings-table";
 import { SalesTable } from "@/components/sales-table";
 import { SwapCard } from "@/components/swap-card";
@@ -47,7 +47,7 @@ export default async function StrategyPage({ params }: { params: Promise<{ addre
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* LEFT */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              <ChartPlaceholder />
+              <PriceChart />
               <Card>
                 <div className="px-4 sm:px-5 py-3 border-b border-border">
                   <h2 className="font-display font-semibold text-sm uppercase tracking-wider">Holdings</h2>
