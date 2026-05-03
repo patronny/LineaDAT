@@ -10,7 +10,21 @@ import { ExternalLink } from "lucide-react";
 type Activity =
   | { kind: "BoughtByProtocol"; bagId: bigint; paid: bigint; listPrice: bigint; tx: string; block: bigint }
   | { kind: "SoldByProtocol"; bagId: bigint; price: bigint; buyer: string; tx: string; block: bigint }
-  | { kind: "BoughtAndBurned"; amount0: bigint; amount1: bigint; tx: string; block: bigint };
+  | { kind: "BoughtAndBurned"; amount0: bigint; amount1: bigint; tx: string; block: bigint }
+  | { kind: "Swap"; ethDelta: bigint; tokenDelta: bigint; tx: string; block: bigint };
+
+const hookTradeAbi = [
+  {
+    type: "event",
+    name: "Trade",
+    inputs: [
+      { name: "strategy", type: "address", indexed: true },
+      { name: "sqrtPriceX96", type: "uint160", indexed: false },
+      { name: "ethAmount", type: "int128", indexed: false },
+      { name: "tokenAmount", type: "int128", indexed: false },
+    ],
+  },
+] as const;
 
 /**
  * Fetches the last ~50 strategy events and renders them as a chronological feed.
@@ -32,7 +46,7 @@ export function ActivityFeedClient() {
         const latest = await client!.getBlockNumber();
         const fromBlock = latest > 50_000n ? latest - 50_000n : 0n;
 
-        const [bought, sold, burned] = await Promise.all([
+        const [bought, sold, burned, swaps] = await Promise.all([
           client!.getContractEvents({
             address: ADDR.strategy,
             abi: strategyAbi,
@@ -54,6 +68,16 @@ export function ActivityFeedClient() {
             fromBlock,
             toBlock: latest,
           }),
+          ADDR.hook && ADDR.hook !== "0x0000000000000000000000000000000000000000"
+            ? client!.getContractEvents({
+                address: ADDR.hook,
+                abi: hookTradeAbi,
+                eventName: "Trade",
+                args: { strategy: ADDR.strategy },
+                fromBlock,
+                toBlock: latest,
+              })
+            : Promise.resolve([]),
         ]);
 
         const all: Activity[] = [];
@@ -82,6 +106,15 @@ export function ActivityFeedClient() {
             kind: "BoughtAndBurned",
             amount0: e.args.amount0 as bigint,
             amount1: e.args.amount1 as bigint,
+            tx: e.transactionHash,
+            block: e.blockNumber,
+          });
+        }
+        for (const e of swaps) {
+          all.push({
+            kind: "Swap",
+            ethDelta: BigInt(e.args.ethAmount as bigint | number),
+            tokenDelta: BigInt(e.args.tokenAmount as bigint | number),
             tx: e.transactionHash,
             block: e.blockNumber,
           });
@@ -159,10 +192,25 @@ function ActivityRow({ item }: { item: Activity }) {
       </p>
     );
   }
+  if (item.kind === "BoughtAndBurned") {
+    return (
+      <p className="text-sm">
+        <span className="font-semibold">Burn:</span> bought and burned{" "}
+        <span className="font-mono tabular">{formatTokens(item.amount1 < 0n ? -item.amount1 : item.amount1)} LINEASTR</span>
+      </p>
+    );
+  }
+  // Swap: positive eth = ETH added to pool (buy LINEASTR); positive token = LINEASTR added to pool (sell)
+  // The hook emits delta from the pool's perspective.
+  const isBuy = item.ethDelta > 0n;
+  const ethAbs = item.ethDelta < 0n ? -item.ethDelta : item.ethDelta;
+  const tokAbs = item.tokenDelta < 0n ? -item.tokenDelta : item.tokenDelta;
   return (
     <p className="text-sm">
-      <span className="font-semibold">Burn:</span> bought and burned{" "}
-      <span className="font-mono tabular">{formatTokens(item.amount1 < 0n ? -item.amount1 : item.amount1)} LINEASTR</span>
+      <span className="font-semibold">{isBuy ? "Buy" : "Sell"}:</span>{" "}
+      <span className="font-mono tabular">{formatEth(ethAbs)} ETH</span>{" "}
+      <span className="text-muted-foreground">{isBuy ? "→" : "←"}</span>{" "}
+      <span className="font-mono tabular">{formatTokens(tokAbs)} LINEASTR</span>
     </p>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { parseEther } from "viem";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { swapperAbi } from "@/lib/abis/swapper";
@@ -61,6 +61,11 @@ function SwapTab({ disabled }: { disabled: boolean }) {
   const { address } = useAccount();
   const { writeContract, isPending } = useWriteContract();
 
+  const { data: ethBalanceData } = useBalance({
+    address,
+    query: { enabled: !!address, refetchInterval: 12_000 },
+  });
+
   const { data: linEastrBal } = useReadContract({
     address: ADDR.strategy,
     abi: erc20Abi,
@@ -90,7 +95,9 @@ function SwapTab({ disabled }: { disabled: boolean }) {
 
   const userLinBal = linEastrBal ?? 0n;
   const userLinAllowance = lineastrAllowance ?? 0n;
+  const userEthBal = ethBalanceData?.value ?? 0n;
   const enoughForSell = side === "sell" ? userLinBal >= amountWei : true;
+  const enoughForBuy = side === "buy" ? userEthBal >= amountWei + parseEther("0.0001") : true; // reserve gas
   const enoughAllowance = side === "buy" ? true : userLinAllowance >= amountWei;
 
   function approveLineastr() {
@@ -167,18 +174,23 @@ function SwapTab({ disabled }: { disabled: boolean }) {
       </div>
 
       <div className="space-y-2 text-sm">
-        {side === "sell" && (
-          <Row label="Your LINEASTR balance" value={formatTokens(userLinBal)} muted={!enoughForSell && valid} />
-        )}
+        <Row label="Your ETH balance" value={`${formatEth(userEthBal)} ETH`} muted={side === "buy" && !enoughForBuy && valid} />
+        <Row label="Your LINEASTR balance" value={formatTokens(userLinBal)} muted={side === "sell" && !enoughForSell && valid} />
         <Row label="Pool" value="ETH/LINEASTR (v4 dynamic)" />
       </div>
 
       {!valid ? (
         <Button className="w-full" disabled>Enter amount</Button>
       ) : side === "buy" ? (
-        <Button className="w-full" onClick={executeBuy} disabled={disabled || isPending}>
-          {isPending ? "Buying..." : `Buy with ${amountStr} ETH`}
-        </Button>
+        !enoughForBuy ? (
+          <Button className="w-full" disabled>
+            Insufficient ETH (need gas reserve)
+          </Button>
+        ) : (
+          <Button className="w-full" onClick={executeBuy} disabled={disabled || isPending}>
+            {isPending ? "Buying..." : `Buy with ${amountStr} ETH`}
+          </Button>
+        )
       ) : !enoughForSell ? (
         <Button className="w-full" disabled>
           Insufficient LINEASTR
@@ -194,7 +206,8 @@ function SwapTab({ disabled }: { disabled: boolean }) {
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        First swaps after launch pay ~85% fee (decaying every minute). Slippage is high in shallow pools.
+        Pool launched 2026-05-03. Dynamic fee decays from 99% → 10% over 89 minutes after pool init,
+        then stays at 10%. Slippage is high in shallow pools.
       </p>
     </div>
   );
