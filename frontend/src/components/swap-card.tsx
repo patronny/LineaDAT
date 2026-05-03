@@ -120,7 +120,7 @@ export function SwapCard() {
                   setAmountStr((Number(userLin) / 1e18).toString());
                 }
               }}
-              className="flex-shrink-0 px-2 py-1 text-xs rounded bg-secondary hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex-shrink-0 px-2 py-1 text-xs font-bold uppercase tracking-wider rounded bg-secondary text-secondary-foreground hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={`Set max ${sellingLabel} balance`}
             >
               Max
