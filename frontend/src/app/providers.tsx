@@ -1,46 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider } from "wagmi";
+import dynamic from "next/dynamic";
 
-import { config } from "@/lib/wagmi-client";
-
-import "@rainbow-me/rainbowkit/styles.css";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 2,
-      staleTime: 10_000,
-    },
-  },
-});
+/**
+ * Client-only wrapper for the actual Providers (WagmiProvider + RainbowKit + QueryClient).
+ *
+ * Why dynamic with ssr:false?
+ *   wagmi/RainbowKit v2 uses `indexedDB` (browser-only) for connector storage even with
+ *   `ssr: true` in `getDefaultConfig`. During Vercel prerendering Node.js attempts to evaluate
+ *   the WagmiProvider tree and crashes with `ReferenceError: indexedDB is not defined`.
+ *
+ *   The fix is to never render the wagmi tree on the server — load it only in the browser.
+ *   This is the canonical solution from wagmi/RainbowKit docs for Next.js 15 App Router.
+ *
+ * Trade-off: a brief flash of "no header / no connect button" on initial page load before JS
+ *   hydrates. Acceptable, and stat tiles + page content render normally because they don't
+ *   depend on wagmi to mount (they show "—" until data loads).
+ */
+const InnerProviders = dynamic(
+  () => import("./providers-impl").then((mod) => mod.Providers),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<"luxury" | "linea" | "cyberpunk">("luxury");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("lineastr-theme") as typeof theme | null;
-    if (stored === "luxury" || stored === "linea" || stored === "cyberpunk") {
-      setTheme(stored);
-    }
-    document.documentElement.setAttribute("data-theme", stored ?? "luxury");
-  }, []);
-
-  return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          theme={theme === "linea" ? lightTheme() : darkTheme()}
-          initialChain={84532}
-          showRecentTransactions={true}
-        >
-          {children}
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
-  );
+  return <InnerProviders>{children}</InnerProviders>;
 }
