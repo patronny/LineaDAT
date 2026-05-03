@@ -1,0 +1,17 @@
+{
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "minedAt": "2026-05-03",
+  "create2Deployer": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+  "salt": "0x0000000000000000000000000000000000000000000000000000000000004d75",
+  "saltDecimal": 19829,
+  "predictedHookAddress": "0x61116044DC8eB623A618021cEDB14836D6512444",
+  "permissionFlags": "0x2444",
+  "permissionFlagsExpanded": "BEFORE_INITIALIZE | AFTER_ADD_LIQUIDITY | AFTER_SWAP | AFTER_SWAP_RETURNS_DELTA",
+  "constructorArgs": {
+    "poolManager": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
+    "lineastrAddress": "0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2",
+    "lineastrFactory": "0xeDCA75CdAbcca93399c22fc1815035C71F5f77A6",
+    "feeAddress": "0xbc6af64859dF1008c8187F94dF89323000dEE668"
+  }
+}

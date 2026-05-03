@@ -143,6 +143,21 @@ contract LINEASTRStrategy is BaseStrategy {
         return 3;
     }
 
+    /// @notice Owner-only escape hatch to drain LINEASTR tokens from the factory address.
+    /// @dev Phase 3.5 testnet helper. The factory holds the entire 1B mint after deployStrategy
+    ///      (BaseStrategy.__BaseStrategy_init mints to factory()), but our minimal LINEASTRFactory
+    ///      lacks a seedLiquidity orchestration. This function lets the owner pull tokens out so a
+    ///      script can run the v4 pool seed flow externally. Phase 4 mainnet must replace this with
+    ///      a proper factory.seedLiquidity(...) function (see TODO docs/85-phase-3-5-results.md).
+    ///
+    ///      Marks `to` as a distributor before the transfer so _afterTokenTransfer's whitelist
+    ///      check passes. Caller is responsible for unsetting via setDistributor(to, false) later.
+    function factoryEscape(address to, uint256 amount) external onlyOwner {
+        require(to != address(0), "Invalid recipient");
+        isDistributor[to] = true;
+        _transfer(factory(), to, amount);
+    }
+
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
     /*                 MECHANISM FUNCTIONS                 */
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
