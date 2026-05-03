@@ -14,7 +14,7 @@ name: LINEASTR Keeper
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes
+    - cron: "0 */2 * * *"   # every 2 hours (12 rounds per 24h, easy on keeper ETH balance)
   workflow_dispatch:
     inputs:
       action:
@@ -28,8 +28,13 @@ on:
           - both        # do both
 
 env:
-  # Auto-stop after 144 scheduled runs (24 hours). Manual workflow_dispatch runs are exempt.
-  MAX_RUNS: "144"
+  # Auto-stop after 12 scheduled runs (= 12 × 2h = 24h observation window).
+  # Manual workflow_dispatch runs are exempt from this counter.
+  MAX_RUNS: "12"
+
+  # Per-round seed amount when strategy.currentFees is depleted. Smaller = longer keeper lifetime.
+  # Bot's buyThreshold defaults to 0.02 ETH, so SEED_AMOUNT >= 0.02 ETH guarantees bot can buy each round.
+  SEED_AMOUNT: "0.025ether"
 
   # Contract addresses on Base Sepolia (chainId 84532) — see docs/80-phase-3-testnet-runbook.md
   RPC_URL: "https://base-sepolia-rpc.publicnode.com"
@@ -69,19 +74,16 @@ jobs:
           echo "  currentFees:    $CURRENT_FEES wei"
           echo "  bot ETH bal:    $BOT_BAL wei"
 
-      - name: Auto-seed fees if depleted (currentFees < 0.01 ETH)
-        # GitHub Actions expressions don't support % (modulo), so we can't easily throttle to "every Nth run".
-        # Seed unconditionally whenever currentFees is below threshold — this means whenever the bot has
-        # consumed all fees on the previous round. Manual `seed` and `both` triggers always seed.
+      - name: Auto-seed fees if depleted (currentFees < 0.005 ETH)
         if: |
           github.event.inputs.action == 'seed' ||
           github.event.inputs.action == 'both' ||
-          steps.state.outputs.currentFees < '10000000000000000'
+          steps.state.outputs.currentFees < '5000000000000000'
         run: |
-          echo "Seeding 0.05 ETH into strategy.currentFees..."
+          echo "Seeding ${{ env.SEED_AMOUNT }} into strategy.currentFees..."
           cast send ${{ env.STRATEGY_ADDR }} \
             "addFees()" \
-            --value 0.05ether \
+            --value ${{ env.SEED_AMOUNT }} \
             --rpc-url ${{ env.RPC_URL }} \
             --private-key ${{ secrets.KEEPER_PK }} \
             --json | python3 -c "import json,sys;d=json.load(sys.stdin);print(f'  tx={d[\"transactionHash\"]} status={d.get(\"status\",\"?\")} block={d.get(\"blockNumber\",\"?\")}')"
