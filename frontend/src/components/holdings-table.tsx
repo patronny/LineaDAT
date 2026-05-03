@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient, useReadContracts, useWriteContract, useAccount } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
-import { ADDR } from "@/lib/wagmi";
+import { ADDR, DEPLOY_BLOCK } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
@@ -43,7 +43,7 @@ export function HoldingsTable() {
           address: ADDR.strategy,
           abi: strategyAbi,
           eventName: "ERC20BoughtByProtocol",
-        });
+        }, { fromBlock: DEPLOY_BLOCK });
         const enriched: BagRow[] = await Promise.all(
           events.map(async (e) => {
             const block = await client!.getBlock({ blockHash: e.blockHash });

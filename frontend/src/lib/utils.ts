@@ -18,12 +18,15 @@ import type { PublicClient } from "viem";
 export async function getEventsChunked<R = any>(
   client: PublicClient,
   params: Record<string, unknown>,
-  options: { totalRange?: bigint; chunkSize?: bigint } = {}
+  options: { totalRange?: bigint; chunkSize?: bigint; fromBlock?: bigint } = {}
 ): Promise<R[]> {
   const totalRange = options.totalRange ?? 50_000n;
   const chunkSize = options.chunkSize ?? 9_000n;
   const latest = await client.getBlockNumber();
-  const start = latest > totalRange ? latest - totalRange : 0n;
+  // Lower bound: explicit fromBlock wins over rolling window.
+  const start = options.fromBlock !== undefined
+    ? (options.fromBlock < latest ? options.fromBlock : latest)
+    : (latest > totalRange ? latest - totalRange : 0n);
   const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
   for (let from = start; from <= latest; from += chunkSize) {
     const to = from + chunkSize - 1n > latest ? latest : from + chunkSize - 1n;

@@ -12,6 +12,15 @@ export const DEFAULT_CHAIN_ID = parseInt(
   10
 );
 
+/**
+ * Strategy deploy block — used as the lower bound for full-history event reads
+ * (Holdings + Sales tables). Set via NEXT_PUBLIC_DEPLOY_BLOCK on Vercel after
+ * deployment. Falls back to 0n if unset (full chain scan — only safe on testnet).
+ */
+export const DEPLOY_BLOCK: bigint = process.env.NEXT_PUBLIC_DEPLOY_BLOCK
+  ? BigInt(process.env.NEXT_PUBLIC_DEPLOY_BLOCK)
+  : 0n;
+
 function addressOr0(envVar: string | undefined): `0x${string}` {
   if (!envVar || !envVar.startsWith("0x") || envVar.length !== 42) {
     return "0x0000000000000000000000000000000000000000" as `0x${string}`;

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
-import { ADDR, txUrl } from "@/lib/wagmi";
+import { ADDR, txUrl, DEPLOY_BLOCK } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
@@ -43,12 +43,12 @@ export function SalesTable() {
             address: ADDR.strategy,
             abi: strategyAbi,
             eventName: "ERC20BoughtByProtocol",
-          }),
+          }, { fromBlock: DEPLOY_BLOCK }),
           getEventsChunked(client!, {
             address: ADDR.strategy,
             abi: strategyAbi,
             eventName: "ERC20SoldByProtocol",
-          }),
+          }, { fromBlock: DEPLOY_BLOCK }),
         ]);
 
         const paidByBag = new Map<string, bigint>();
