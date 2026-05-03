@@ -29,6 +29,8 @@ export function useStrategyStats() {
       { address: ADDR.strategy, abi: strategyAbi, functionName: "availableFunds" },
       { address: ADDR.strategy, abi: strategyAbi, functionName: "getMaxPriceForBuy" },
       { address: ADDR.tLINEA, abi: erc20Abi, functionName: "balanceOf", args: [ADDR.strategy] },
+      // Burn counter: LINEASTR balance held by 0x...dEaD (TWAP burns + future strategy buy-and-burn)
+      { address: ADDR.strategy, abi: strategyAbi, functionName: "balanceOf", args: ["0x000000000000000000000000000000000000dEaD"] },
     ],
     query: {
       refetchInterval: 12_000,
@@ -62,6 +64,7 @@ export function useStrategyStats() {
     availableFunds: data[13].result as bigint,
     maxPriceForBuy: data[14].result as bigint,
     treasuryUnderlying: data[15].result as bigint,
+    burned: data[16].result as bigint,
   };
 
   return { data: stats, isLoading, error, refetch };

@@ -11,6 +11,16 @@ import { formatEth, formatTokens } from "@/lib/utils";
 export function StrategyStatsHero() {
   const { data, isLoading } = useStrategyStats();
 
+  // Burn percent: dead-address balance / totalSupply (= initial mint, never decreased)
+  let burnPercent = "0%";
+  if (data && data.totalSupply > 0n) {
+    // bps = burned * 10000 / totalSupply, then divide by 100 for percent with 2 decimals
+    const bps = Number((data.burned * 10000n) / data.totalSupply);
+    burnPercent = bps < 1
+      ? "<0.01%"
+      : `${(bps / 100).toFixed(bps < 100 ? 2 : 1)}%`;
+  }
+
   const tiles = [
     {
       label: "Available Funds",
@@ -32,10 +42,15 @@ export function StrategyStatsHero() {
       value: data ? `${formatEth(data.ethToTwap)} ETH` : "—",
       sub: data ? `Pending burn-and-buyback` : "",
     },
+    {
+      label: "Burned",
+      value: data ? formatTokens(data.burned) : "—",
+      sub: data ? `${burnPercent} of supply at 0x…dEaD` : "",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
       {tiles.map((t) => (
         <Card key={t.label} className="stat-tile">
           <div className="stat-label">{t.label}</div>
