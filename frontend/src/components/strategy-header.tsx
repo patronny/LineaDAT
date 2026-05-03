@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { Card } from "./ui/card";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
+import { useEthPrice } from "@/hooks/useEthPrice";
 import { hookAbi } from "@/lib/abis/swapper";
 import { ADDR } from "@/lib/wagmi";
 import { lineastrPriceInEth } from "@/lib/utils";
@@ -14,6 +15,7 @@ import { lineastrPriceInEth } from "@/lib/utils";
  */
 export function StrategyHeader() {
   const { data } = useStrategyStats();
+  const ethUsd = useEthPrice();
   const client = usePublicClient();
   const [vol24h, setVol24h] = useState<bigint>(0n);
 
@@ -51,14 +53,28 @@ export function StrategyHeader() {
     };
   }, [client]);
 
-  const pricePerLineastr = data ? lineastrPriceInEth(data.sqrtPriceX96) : 0;
+  const pricePerLineastrEth = data ? lineastrPriceInEth(data.sqrtPriceX96) : 0;
+  const pricePerLineastrUsd = pricePerLineastrEth * ethUsd;
   const totalSupplyFloat = data ? Number(data.totalSupply) / 1e18 : 0;
   const burnedFloat = data ? Number(data.burned) / 1e18 : 0;
-  const marketCapEth = pricePerLineastr * (totalSupplyFloat - burnedFloat);
-  const marketCapInclBurnsEth = pricePerLineastr * totalSupplyFloat;
+  const circulatingFloat = totalSupplyFloat - burnedFloat;
 
-  const fmt = (n: number, max = 6) =>
-    n === 0 ? "—" : n < 1e-9 ? n.toExponential(2) : n.toFixed(max);
+  const marketCapUsd = pricePerLineastrUsd * circulatingFloat;
+  const fdvUsd = pricePerLineastrUsd * totalSupplyFloat;
+  const vol24hUsd = (Number(vol24h) / 1e18) * ethUsd;
+
+  const fmtPriceUsd = (n: number) => {
+    if (n === 0) return "—";
+    if (n < 0.0001) return `$${n.toExponential(2)}`;
+    if (n < 1) return `$${n.toFixed(6)}`;
+    return `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  };
+  const fmtUsdLarge = (n: number) => {
+    if (n === 0) return "—";
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
+    return `$${n.toFixed(2)}`;
+  };
 
   return (
     <Card className="mb-4 sm:mb-6">
@@ -84,10 +100,10 @@ export function StrategyHeader() {
 
         {/* Inline stats — desktop horizontal, mobile 2-col grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-1 lg:justify-end gap-3 sm:gap-6 text-xs lg:text-sm">
-          <Stat label="$LINEASTR" value={pricePerLineastr ? `${fmt(pricePerLineastr, 8)} ETH` : "—"} />
-          <Stat label="Market Cap" value={marketCapEth ? `${fmt(marketCapEth, 4)} ETH` : "—"} />
-          <Stat label="MC incl burns" value={marketCapInclBurnsEth ? `${fmt(marketCapInclBurnsEth, 4)} ETH` : "—"} />
-          <Stat label="3h Volume" value={vol24h > 0n ? `${(Number(vol24h) / 1e18).toFixed(4)} ETH` : "—"} />
+          <Stat label="$LINEASTR" value={fmtPriceUsd(pricePerLineastrUsd)} />
+          <Stat label="Market Cap" value={fmtUsdLarge(marketCapUsd)} />
+          <Stat label="FDV" value={fmtUsdLarge(fdvUsd)} />
+          <Stat label="3h Volume" value={fmtUsdLarge(vol24hUsd)} />
           <Stat label="3h Change" value="—" muted />
         </div>
       </div>
