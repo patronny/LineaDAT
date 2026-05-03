@@ -1,0 +1,33 @@
+# LINEASTR keeper — Fly.io app config
+#
+# Deploy:
+#   fly launch --no-deploy --copy-config --name lineastr-keeper
+#   fly secrets set RPC_URL=... KEEPER_PK=0x... STRATEGY_ADDR=0x... BOT_ADDR=0x...
+#   fly deploy
+#
+# Monitor:
+#   fly logs
+
+app = "lineastr-keeper"
+primary_region = "fra"  # close to public Base Sepolia RPC; change if you self-host RPC elsewhere
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  CHAIN_NAME = "base-sepolia"
+  CRON_SCHEDULE = "*/30 * * * *"
+  BUY_THRESHOLD_WEI = "1000000000000000"
+
+# No HTTP service — this is a background worker.
+# Single always-on machine is sufficient for a cron loop.
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+[deploy]
+  strategy = "immediate"
+
+[restart]
+  policy = "always"
