@@ -40,7 +40,6 @@ export function ActionsCard() {
   });
 
   const ethToTwap = stats?.ethToTwap ?? 0n;
-  const twapInc = stats?.twapIncrement ?? 0n;
   const twapReady = ethToTwap > 0n;
 
   const bagSize = stats?.bagSize ?? 0n;
@@ -104,7 +103,7 @@ export function ActionsCard() {
             ? "No ETH to TWAP yet"
             : isPending
               ? "Burning..."
-              : `Trigger TWAP — burn ${formatEth(twapInc < ethToTwap ? twapInc : ethToTwap)} ETH worth`}
+              : `Trigger TWAP — ${formatEth(ethToTwap)} ETH pending burn`}
         </Button>
 
         <Button
