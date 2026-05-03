@@ -7,6 +7,7 @@ import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ADDR } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 
 type BagRow = {
   bagId: bigint;
@@ -27,6 +28,8 @@ export function HoldingsTable() {
   const { writeContract, isPending } = useWriteContract();
   const [rows, setRows] = useState<BagRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
@@ -95,6 +98,8 @@ export function HoldingsTable() {
     })
     .filter((r) => r.listPrice > 0n);
 
+  const visible = usePagedSlice(liveRows, page, pageSize);
+
   function buy(bagId: bigint, price: bigint) {
     writeContract({
       address: ADDR.strategy,
@@ -140,7 +145,7 @@ export function HoldingsTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {liveRows.map((r) => (
+            {visible.map((r) => (
               <tr key={String(r.bagId)}>
                 <td className="py-3 px-4 font-mono text-xs">{formatTradeDate(r.ts)}</td>
                 <td className="py-3 px-4 font-mono tabular">{formatTokens(bagSize)}</td>
@@ -181,6 +186,13 @@ export function HoldingsTable() {
           </li>
         ))}
       </ul>
+      <PaginationFooter
+        page={page}
+        pageSize={pageSize}
+        totalRows={liveRows.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </>
   );
 }

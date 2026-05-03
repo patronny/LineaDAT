@@ -7,6 +7,7 @@ import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ADDR, txUrl } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
+import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 
 type SaleRow = {
   bagId: bigint;
@@ -26,6 +27,8 @@ export function SalesTable() {
   const { data: stats } = useStrategyStats();
   const [rows, setRows] = useState<SaleRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
@@ -92,6 +95,7 @@ export function SalesTable() {
   }, [client]);
 
   const bagSize = stats?.bagSize ?? 0n;
+  const visible = usePagedSlice(rows, page, pageSize);
 
   if (isLoading) {
     return (
@@ -126,7 +130,7 @@ export function SalesTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.map((r) => {
+            {visible.map((r) => {
               const profit = r.soldFor - r.paidByBot;
               const profitPositive = profit >= 0n;
               return (
@@ -161,7 +165,7 @@ export function SalesTable() {
       </div>
 
       <ul className="md:hidden space-y-2 p-4">
-        {rows.map((r) => {
+        {visible.map((r) => {
           const profit = r.soldFor - r.paidByBot;
           const profitPositive = profit >= 0n;
           return (
@@ -185,6 +189,13 @@ export function SalesTable() {
           );
         })}
       </ul>
+      <PaginationFooter
+        page={page}
+        pageSize={pageSize}
+        totalRows={rows.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </>
   );
 }

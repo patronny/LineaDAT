@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { hookAbi } from "@/lib/abis/swapper";
 import { ADDR, txUrl, addressUrl } from "@/lib/wagmi";
 import { formatEth, formatTokens, shortAddress, formatTradeDate } from "@/lib/utils";
-import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 
 type SwapRow = {
   side: "buy" | "sell";
@@ -16,8 +17,6 @@ type SwapRow = {
   ts: number;
   origin: string | null;
 };
-
-const PAGE_OPTIONS = [10, 20, 30, 40, 50];
 
 export function PaginatedSwapsTable() {
   const client = usePublicClient();
@@ -87,12 +86,7 @@ export function PaginatedSwapsTable() {
     };
   }, [client]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const visible = useMemo(
-    () => rows.slice(safePage * pageSize, safePage * pageSize + pageSize),
-    [rows, safePage, pageSize]
-  );
+  const visible = usePagedSlice(rows, page, pageSize);
 
   if (isLoading) {
     return (
@@ -196,49 +190,13 @@ export function PaginatedSwapsTable() {
         ))}
       </ul>
 
-      {/* Pagination footer */}
-      <div className="border-t border-border px-4 sm:px-5 py-3 flex items-center justify-between text-xs flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Rows</span>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(parseInt(e.target.value, 10));
-              setPage(0);
-            }}
-            className="bg-secondary border border-border rounded px-2 py-1 font-mono"
-          >
-            {PAGE_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-muted-foreground font-mono">
-            Page {safePage + 1} of {totalPages}
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={safePage === 0}
-              className="p-1.5 rounded border border-border hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={safePage >= totalPages - 1}
-              className="p-1.5 rounded border border-border hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Next page"
-            >
-              <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-      </div>
+      <PaginationFooter
+        page={page}
+        pageSize={pageSize}
+        totalRows={rows.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </>
   );
 }
