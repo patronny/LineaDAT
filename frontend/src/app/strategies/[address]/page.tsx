@@ -4,6 +4,7 @@ import { StrategyStatsHero } from "@/components/strategy-stats";
 import { BagsForSaleClient } from "@/components/bags-for-sale";
 import { ActivityFeedClient } from "@/components/activity-feed";
 import { TradeWidgetClient } from "@/components/trade-widget";
+import { SwapHistoryTable } from "@/components/swap-history";
 import { Card } from "@/components/ui/card";
 
 /**
@@ -91,6 +92,16 @@ export default async function StrategyPage({ params }: { params: Promise<{ addre
               </div>
             </div>
           </div>
+
+          {/* Bottom: last 10 swap transactions */}
+          <Card className="mt-4 sm:mt-6">
+            <div className="p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-display font-semibold mb-4">
+                Recent swaps
+              </h2>
+              <SwapHistoryTable />
+            </div>
+          </Card>
         </div>
       </main>
 

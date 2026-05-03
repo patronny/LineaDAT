@@ -5,7 +5,7 @@ import { parseEther } from "viem";
 import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { erc20Abi } from "@/lib/abis/erc20";
-import { swapperAbi } from "@/lib/abis/swapper";
+import { swapperAbi, hookAbi } from "@/lib/abis/swapper";
 import { ADDR, POOL_KEY } from "@/lib/wagmi";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { formatEth, formatTokens } from "@/lib/utils";
@@ -65,6 +65,20 @@ function SwapTab({ disabled }: { disabled: boolean }) {
     address,
     query: { enabled: !!address, refetchInterval: 12_000 },
   });
+
+  // Live fee read on-chain. Buy fee = decay 99% → 10% over 89 min. Sell fee = constant 10%.
+  const { data: liveFeeBps } = useReadContract({
+    address: ADDR.hook,
+    abi: hookAbi,
+    functionName: "calculateFee",
+    args: [ADDR.strategy, side === "buy"],
+    query: {
+      enabled: ADDR.hook !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 30_000, // re-poll once per 30s; fee changes every minute
+    },
+  });
+  const feeBps = liveFeeBps ?? (side === "buy" ? 9900n : 1000n);
+  const feePercent = Number(feeBps) / 100;
 
   const { data: linEastrBal } = useReadContract({
     address: ADDR.strategy,
@@ -177,6 +191,11 @@ function SwapTab({ disabled }: { disabled: boolean }) {
         <Row label="Your ETH balance" value={`${formatEth(userEthBal)} ETH`} muted={side === "buy" && !enoughForBuy && valid} />
         <Row label="Your LINEASTR balance" value={formatTokens(userLinBal)} muted={side === "sell" && !enoughForSell && valid} />
         <Row label="Pool" value="ETH/LINEASTR (v4 dynamic)" />
+        <Row
+          label="Current fee"
+          value={`${feePercent.toFixed(feePercent < 100 && feePercent !== Math.floor(feePercent) ? 2 : 0)}%`}
+          highlight={feeBps > 1000n}
+        />
       </div>
 
       {!valid ? (
@@ -206,8 +225,9 @@ function SwapTab({ disabled }: { disabled: boolean }) {
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        Pool launched 2026-05-03. Dynamic fee decays from 99% → 10% over 89 minutes after pool init,
-        then stays at 10%. Slippage is high in shallow pools.
+        {feeBps > 1000n
+          ? `Fee is currently ${feePercent.toFixed(2)}% — decaying ~1% every minute toward the steady-state 10%.`
+          : "Fee at steady-state 10%. Hook collects this and feeds protocol revenue."}
       </p>
     </div>
   );
