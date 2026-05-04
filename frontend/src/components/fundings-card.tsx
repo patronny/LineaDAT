@@ -36,7 +36,7 @@ export function FundingsCard() {
       <div className="text-xs text-muted-foreground">$LINEASTR is currently holding</div>
       <div className="text-3xl font-display font-bold mt-1 tabular">{formatEth(currentFees)} ETH</div>
       <div className="text-xs text-muted-foreground font-mono mt-1">
-        ↳ {formatTokens(treasuryUnderlying)} tLINEA in treasury
+        + {formatTokens(treasuryUnderlying)} tLINEA in treasury
       </div>
     </div>
   );
