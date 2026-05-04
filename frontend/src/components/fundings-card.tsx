@@ -48,11 +48,18 @@ export function FundingsCard() {
  * intent text (per design pass 2026-05-04).
  */
 export function BotIntentTitle() {
-  const { bagSize, supplyPct } = useFundingsData();
+  const { bagSize } = useFundingsData();
+  // Compact bag-size label: 150000e18 wei → "150k tLINEA". Falls back to a
+  // full integer-with-thousands separators only for sub-1k values, which
+  // shouldn't happen at the locked bagSize but keeps the helper honest.
+  const tokens = Number(bagSize) / 1e18;
+  let compact: string;
+  if (tokens >= 1_000_000) compact = `${(tokens / 1_000_000).toFixed(tokens % 1_000_000 === 0 ? 0 : 1)}M`;
+  else if (tokens >= 1_000) compact = `${(tokens / 1_000).toFixed(tokens % 1_000 === 0 ? 0 : 1)}k`;
+  else compact = formatTokens(bagSize);
   return (
     <span>
-      LINEASTR is trying to buy{" "}
-      <span className="font-mono">{formatTokens(bagSize)} tLINEA</span> — {supplyPct}% of supply
+      LINEASTR is trying to buy <span className="font-mono">{compact} tLINEA</span>
     </span>
   );
 }
