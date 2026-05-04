@@ -6,7 +6,7 @@ import { HoldingsTable } from "./holdings-table";
 import { SalesTable } from "./sales-table";
 import { PaginatedSwapsTable } from "./paginated-swaps-table";
 import { SwapCard } from "./swap-card";
-import { FundingsCard, BotIntentCard, ProgressCard, ProgressTitle } from "./fundings-card";
+import { FundingsCard, BotIntentCard, BotIntentTitle, ProgressCard, ProgressTitle } from "./fundings-card";
 import { BurnedCard } from "./burned-card";
 import { ActionsCard } from "./actions-card";
 
@@ -40,7 +40,7 @@ const leftSections: DraggableSection[] = [
 const rightSections: DraggableSection[] = [
   { id: "swap", title: "Swap", render: () => <SwapCard /> },
   { id: "fundings", title: "Fundings", render: () => <FundingsCard /> },
-  { id: "bot-intent", title: "Bot intent", render: () => <BotIntentCard /> },
+  { id: "bot-intent", title: <BotIntentTitle />, render: () => <BotIntentCard /> },
   { id: "progress", title: <ProgressTitle />, render: () => <ProgressCard /> },
   { id: "burned", title: "Burned amount", render: () => <BurnedCard /> },
   { id: "actions", title: "Actions", render: () => <ActionsCard /> },

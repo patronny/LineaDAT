@@ -43,23 +43,28 @@ export function FundingsCard() {
 }
 
 /**
- * "Bot is trying to buy 150,000 tLINEA — N% of supply, current bid X ETH"
+ * Title for the Bot intent card — "LINEASTR is trying to buy 150,000 tLINEA — 0.01% of supply".
+ * Replaces what used to be the static "Bot intent" header label and the in-body
+ * intent text (per design pass 2026-05-04).
+ */
+export function BotIntentTitle() {
+  const { bagSize, supplyPct } = useFundingsData();
+  return (
+    <span>
+      LINEASTR is trying to buy{" "}
+      <span className="font-mono">{formatTokens(bagSize)} tLINEA</span> — {supplyPct}% of supply
+    </span>
+  );
+}
+
+/**
+ * Card body — only the headline bag size + current bid. Intent text lives in
+ * the card title now (BotIntentTitle).
  */
 export function BotIntentCard() {
-  const { currentFees, bagSize, supplyPct } = useFundingsData();
+  const { currentFees, bagSize } = useFundingsData();
   return (
     <div className="p-4 sm:p-5 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-xs text-muted-foreground leading-snug">
-          Bot is trying to buy
-          <br />
-          <span className="font-mono">{formatTokens(bagSize)} tLINEA</span>
-        </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <div>{supplyPct}%</div>
-          <div>of supply</div>
-        </div>
-      </div>
       <div className="text-3xl font-display font-bold tabular">{formatTokens(bagSize)} tLINEA</div>
       <div className="border-t border-border pt-3 flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Current bid</span>

@@ -91,6 +91,29 @@ export async function fetchSwaps(limit = 200, signal?: AbortSignal): Promise<Swa
 }
 
 /**
+ * Earliest swap with timestamp >= sinceUnix (used to compute the 24h price
+ * change baseline). Returns null when no swap exists in that window.
+ */
+export async function fetchOldestSwapSince(
+  sinceUnix: number,
+  signal?: AbortSignal
+): Promise<SwapRow | null> {
+  const data = await gql<{ swaps: Page<SwapRow> }>(
+    `query($since: Int!) {
+      swaps(
+        where: { timestamp_gt: $since }
+        orderBy: "timestamp"
+        orderDirection: "asc"
+        limit: 1
+      ) { items { ${SWAP_FIELDS} } }
+    }`,
+    { since: sinceUnix },
+    signal
+  );
+  return data.swaps.items[0] ?? null;
+}
+
+/**
  * Liveness probe for the indexer. Used by hooks to decide whether to fall
  * back to on-chain getLogs. ~120ms call, cached for 30s.
  */

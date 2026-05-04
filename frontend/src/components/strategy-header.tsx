@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { Card } from "./ui/card";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useEthPrice } from "@/hooks/useEthPrice";
+import { usePriceChange24h } from "@/hooks/usePriceChange24h";
 import { hookAbi } from "@/lib/abis/swapper";
 import { ADDR } from "@/lib/wagmi";
 import { lineastrPriceInEth, getEventsChunked } from "@/lib/utils";
@@ -54,6 +55,7 @@ export function StrategyHeader() {
   const totalSupplyFloat = data ? Number(data.totalSupply) / 1e18 : 0;
   const burnedFloat = data ? Number(data.burned) / 1e18 : 0;
   const circulatingFloat = totalSupplyFloat - burnedFloat;
+  const change24hPct = usePriceChange24h(data?.sqrtPriceX96);
 
   const marketCapUsd = pricePerLineastrUsd * circulatingFloat;
   const fdvUsd = pricePerLineastrUsd * totalSupplyFloat;
@@ -100,18 +102,51 @@ export function StrategyHeader() {
           <Stat label="Market Cap" value={fmtUsdLarge(marketCapUsd)} />
           <Stat label="FDV" value={fmtUsdLarge(fdvUsd)} />
           <Stat label="24h Volume" value={fmtUsdLarge(vol24hUsd)} />
-          <Stat label="24h Change" value="—" muted />
+          <Stat
+            label="24h Change"
+            value={
+              change24hPct === null
+                ? "—"
+                : `${change24hPct >= 0 ? "+" : ""}${change24hPct.toFixed(2)}%`
+            }
+            muted={change24hPct === null}
+            tone={
+              change24hPct === null
+                ? undefined
+                : change24hPct >= 0
+                  ? "positive"
+                  : "negative"
+            }
+          />
         </div>
       </div>
     </Card>
   );
 }
 
-function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+function Stat({
+  label,
+  value,
+  muted,
+  tone,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+  tone?: "positive" | "negative";
+}) {
+  const toneClass =
+    tone === "positive"
+      ? "text-green-500 dark:text-green-400"
+      : tone === "negative"
+        ? "text-red-500 dark:text-red-400"
+        : muted
+          ? "text-muted-foreground"
+          : "";
   return (
     <div className="lg:text-right">
       <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`font-mono tabular text-sm sm:text-base font-semibold ${muted ? "text-muted-foreground" : ""}`}>
+      <div className={`font-mono tabular text-sm sm:text-base font-semibold ${toneClass}`}>
         {value}
       </div>
     </div>
