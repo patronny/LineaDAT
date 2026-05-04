@@ -28,7 +28,12 @@ export default function HomePage() {
               <br />
               <span className="text-primary">Perpetual</span>
               <br />
-              DAT (digital asset treasuries)
+              <span className="whitespace-nowrap">
+                DAT{" "}
+                <span className="text-xs sm:text-sm md:text-base lg:text-lg font-sans font-normal text-muted-foreground align-middle">
+                  (digital asset treasuries)
+                </span>
+              </span>
             </h1>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
