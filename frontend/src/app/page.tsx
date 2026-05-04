@@ -24,10 +24,11 @@ export default function HomePage() {
         <section className="container py-12 sm:py-16 md:py-24">
           <div className="max-w-3xl">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold tracking-tight leading-[1.1]">
-              Perpetual and{" "}
-              <span className="text-primary">Automated</span> DAT
+              On-chain
               <br />
-              (digital asset treasury) on Linea.
+              <span className="text-primary">Perpetual</span>
+              <br />
+              DAT (digital asset treasuries)
             </h1>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -48,27 +49,25 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             <Card className="p-6 sm:p-8">
               <div className="text-3xl mb-3"></div>
-              <h3 className="text-lg font-display font-semibold mb-2">Slow-rug protected</h3>
+              <h3 className="text-lg font-display font-semibold mb-2">Enforced Fee</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                The bot's max-buy is bounded by a per-block ramp.
-                Even if a single bot drains all available fees, no front-runner can extract more than
-                <span className="font-mono"> currentFees</span>.
+                Every trade, buy or sell, pools ETH in the DAT contract through a fully-enforced 10% tax.
               </p>
             </Card>
             <Card className="p-6 sm:p-8">
               <div className="text-3xl mb-3"></div>
-              <h3 className="text-lg font-display font-semibold mb-2">Deflationary by design</h3>
+              <h3 className="text-lg font-display font-semibold mb-2">Dynamic Acquisitions</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Every sold bag pushes ETH into a TWAP buy-and-burn. Total supply only decreases.
-                Treasury LINEA only grows.
+                Once enough ETH has been accumulated, DAT purchases the cheapest available BAG and lists it
+                for resale with a 20% markup.
               </p>
             </Card>
             <Card className="p-6 sm:p-8">
               <div className="text-3xl mb-3"></div>
-              <h3 className="text-lg font-display font-semibold mb-2">Open source</h3>
+              <h3 className="text-lg font-display font-semibold mb-2">Burn Pressure</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                MIT license, full Foundry test suite (134+ tests passing), 1000-cycle Anvil fork
-                stress test. Code is the law.
+                Upon selling the BAG, the DAT will immediately use all of the ETH from the sale to buy and
+                burn its own supply.
               </p>
             </Card>
           </div>
