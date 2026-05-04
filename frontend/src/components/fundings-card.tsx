@@ -35,8 +35,10 @@ export function FundingsCard() {
     <div className="p-4 sm:p-5">
       <div className="text-xs text-muted-foreground">$LINEASTR is currently holding</div>
       <div className="text-3xl font-display font-bold mt-1 tabular">{formatEth(currentFees)} ETH</div>
-      <div className="text-xs text-muted-foreground font-mono mt-1">
-        + {formatTokens(treasuryUnderlying)} tLINEA in treasury
+      <div className="mt-3">
+        <span className="inline-block px-2.5 py-1 text-xs font-mono text-muted-foreground border border-border rounded bg-secondary/20">
+          + {formatTokens(treasuryUnderlying)} $tLINEA
+        </span>
       </div>
     </div>
   );
