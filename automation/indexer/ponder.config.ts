@@ -2,8 +2,11 @@ import { createConfig } from "ponder";
 import { strategyAbi } from "./abis/strategy";
 import { hookAbi } from "./abis/hook";
 
+// Defaults reflect the LIVE Phase 3 Base Sepolia deployment (2026-05-03).
+// Override on Fly via `fly secrets set --app lineastr-indexer STRATEGY_ADDRESS=…`
+// after any redeploy. Phase 4 mainnet should set both via secrets, not edit here.
 const STRATEGY = (process.env.STRATEGY_ADDRESS ??
-  "0x6951b8bc66660c52c8be79a6128acaf06b8a3c1f") as `0x${string}`;
+  "0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2") as `0x${string}`;
 const HOOK = (process.env.HOOK_ADDRESS ??
   "0x61116044DC8eB623A618021cEDB14836D6512444") as `0x${string}`;
 
