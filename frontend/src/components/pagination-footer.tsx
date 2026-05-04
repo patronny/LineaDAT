@@ -31,7 +31,7 @@ export function PaginationFooter({ page, pageSize, totalRows, onPageChange, onPa
             onPageSizeChange(parseInt(e.target.value, 10));
             onPageChange(0);
           }}
-          className="bg-secondary border border-border rounded px-2 py-1 font-mono"
+          className="bg-secondary text-secondary-foreground font-bold border border-border rounded px-2 py-1 font-mono hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary"
         >
           {PAGE_OPTIONS.map((n) => (
             <option key={n} value={n}>
@@ -48,7 +48,7 @@ export function PaginationFooter({ page, pageSize, totalRows, onPageChange, onPa
           <button
             onClick={() => onPageChange(Math.max(0, safePage - 1))}
             disabled={safePage === 0}
-            className="p-1.5 rounded border border-border hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-1.5 rounded bg-secondary text-secondary-foreground border border-border hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Previous page"
           >
             <ChevronLeft className="w-3 h-3" />
@@ -56,7 +56,7 @@ export function PaginationFooter({ page, pageSize, totalRows, onPageChange, onPa
           <button
             onClick={() => onPageChange(Math.min(totalPages - 1, safePage + 1))}
             disabled={safePage >= totalPages - 1}
-            className="p-1.5 rounded border border-border hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-1.5 rounded bg-secondary text-secondary-foreground border border-border hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Next page"
           >
             <ChevronRight className="w-3 h-3" />
