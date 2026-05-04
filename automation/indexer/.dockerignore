@@ -1,0 +1,9 @@
+node_modules
+.ponder
+generated
+.env
+.env.local
+*.log
+.git
+.gitignore
+README.md

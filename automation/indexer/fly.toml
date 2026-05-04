@@ -1,0 +1,50 @@
+# Ponder indexer for the LINEASTR contracts. Lives next to the keeper as a
+# separate Fly app (independent scaling + restart cycles + memory).
+
+app = 'lineastr-indexer'
+primary_region = 'fra'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[deploy]
+  strategy = 'immediate'
+
+[env]
+  CHAIN_NAME = 'base-sepolia'
+  DATABASE_SCHEMA = 'public'
+  PONDER_DATABASE_DIRECTORY = '/data/pglite'
+  # PONDER_RPC_URL_84532 — set via `fly secrets set` (Alchemy/Infura URL preferred).
+  # STRATEGY_ADDRESS, HOOK_ADDRESS, START_BLOCK — set via `fly secrets set`.
+
+[http_service]
+  internal_port = 42069
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 200
+    soft_limit = 100
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '60s'
+    method = 'GET'
+    path = '/healthz'
+
+[[restart]]
+  policy = 'always'
+
+[[mounts]]
+  source = 'lineastr_indexer_data'
+  destination = '/data'
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
