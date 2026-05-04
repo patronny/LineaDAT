@@ -144,7 +144,7 @@ export function HoldingsTable() {
   if (liveRows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center px-4">
-        No bags listed for sale right now. Bot lists a new bag whenever currentFees ≥ 0.02 ETH.
+        No bags listed for sale right now.
       </p>
     );
   }
