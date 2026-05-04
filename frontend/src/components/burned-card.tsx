@@ -39,14 +39,18 @@ export function BurnedCard() {
       {/* edge vignette */}
       <div className="fire-vignette absolute inset-0 pointer-events-none" aria-hidden />
 
-      <div className="relative z-10 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider opacity-95">
-          <Flame className="w-3.5 h-3.5 text-orange-300 animate-pulse" />
+      <div className="relative z-10 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] space-y-1.5">
+        <div className="flex items-center gap-2 text-base sm:text-lg uppercase tracking-[0.2em] font-semibold opacity-95">
+          <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-orange-300 animate-pulse" />
           $LINEASTR burned
         </div>
-        <div className="text-4xl sm:text-5xl font-display font-bold tabular mt-1">{pctStr}</div>
-        <div className="text-xs opacity-90 mt-1">of supply</div>
-        <div className="text-sm font-mono tabular mt-3">{formatTokens(burned)} tokens</div>
+        <div className="flex items-baseline gap-2 font-display font-bold">
+          <span className="text-3xl sm:text-4xl tabular">{pctStr}</span>
+          <span className="text-base sm:text-lg opacity-90 font-sans font-normal">of supply</span>
+        </div>
+        <div className="text-base sm:text-lg font-mono tabular opacity-95">
+          {formatTokens(burned)} tokens
+        </div>
       </div>
     </div>
   );
