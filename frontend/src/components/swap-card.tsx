@@ -108,6 +108,7 @@ export function SwapCard() {
   const sellingLabel = side === "buy" ? "ETH" : "LINEASTR";
   const buyingLabel = side === "buy" ? "LINEASTR" : "ETH";
   const sellingBalance = side === "buy" ? userEth : userLin;
+  const buyingBalance = side === "buy" ? userLin : userEth;
 
   function flip() {
     setSide(side === "buy" ? "sell" : "buy");
@@ -159,7 +160,7 @@ export function SwapCard() {
         <div className="flex justify-center">
           <button
             onClick={flip}
-            className="rounded-full p-2 bg-secondary hover:opacity-80 border border-border"
+            className="rounded-full p-2 bg-secondary text-secondary-foreground hover:opacity-80 border border-border focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Flip swap direction"
           >
             <ArrowDown className="w-4 h-4" />
@@ -168,7 +169,12 @@ export function SwapCard() {
 
         {/* Buying */}
         <div className="rounded-md border border-border bg-secondary/30 p-3 space-y-2">
-          <div className="text-xs text-muted-foreground">Buying</div>
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span className="flex-shrink-0">Buying</span>
+            <span className="font-mono truncate text-right">
+              Balance: {side === "buy" ? formatTokens(buyingBalance) : `${formatEth(buyingBalance)} ETH`}
+            </span>
+          </div>
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <span className="flex-1 min-w-0 w-0 text-xl sm:text-2xl font-mono tabular text-muted-foreground truncate">
               {valid ? (estimatedOut ? `≈ ${estimatedOut}` : "…") : "0.0"}
