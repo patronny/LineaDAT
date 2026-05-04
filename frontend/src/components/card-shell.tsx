@@ -52,7 +52,7 @@ export function CardShell({ id, title, subtitle, collapsed, onToggle, children, 
           {headerRight ? <div className="flex-shrink-0">{headerRight}</div> : null}
           <button
             onClick={onToggle}
-            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+            className="p-1 rounded text-muted-foreground hover:bg-secondary hover:text-secondary-foreground focus-visible:ring-2 focus-visible:ring-primary"
             aria-label={collapsed ? "Expand card" : "Collapse card"}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

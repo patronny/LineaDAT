@@ -30,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           })}
           initialChain={84532}
           showRecentTransactions={true}
+          locale="en-US"
         >
           {children}
         </RainbowKitProvider>
