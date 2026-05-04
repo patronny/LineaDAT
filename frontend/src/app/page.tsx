@@ -23,20 +23,12 @@ export default function HomePage() {
         {/* HERO */}
         <section className="container py-12 sm:py-16 md:py-24">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 text-xs font-mono uppercase tracking-wider rounded-full border border-primary/30 bg-primary/10 text-primary">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Live on Base Sepolia
-            </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold tracking-tight leading-[1.1]">
-              The Linea-backed
+              Perpetual and{" "}
+              <span className="text-primary">Automated</span> DAT
               <br />
-              <span className="text-primary">deflationary</span> strategy.
+              (digital asset treasury) on Linea.
             </h1>
-            <p className="mt-6 text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl">
-              LINEASTR is a fork of TokenStrategy v3 calibrated for $LINEA. Buy bags of LINEA
-              with ETH, sell them back at a 20% markup. The protocol burns LINEASTR forever.
-              Slow-rug protected, fully on-chain, MIT licensed.
-            </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Button size="xl" asChild>
