@@ -62,13 +62,21 @@ export function shortAddress(addr: string | undefined, chars = 4): string {
 
 /**
  * Format a wei value as ETH with N decimal places.
+ *
+ * For very small non-zero values where N decimals would round to 0, fall back
+ * to up to 7 fraction digits so a real number doesn't render as "0". Without
+ * this a +0.0000191 ETH bot profit (real on-chain) shows as "+0 ETH" because
+ * the default precision of 4 truncates the leading zeros.
  */
 export function formatEth(wei: bigint | undefined, decimals = 4): string {
   if (wei === undefined) return "—";
   const eth = Number(wei) / 1e18;
+  if (eth === 0) return "0";
+  const minRepresentable = 10 ** -decimals;
+  const useExtra = Math.abs(eth) > 0 && Math.abs(eth) < minRepresentable;
   return eth.toLocaleString("en-US", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: decimals,
+    maximumFractionDigits: useExtra ? 7 : decimals,
   });
 }
 
