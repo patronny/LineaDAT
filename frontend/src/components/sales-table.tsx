@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
+import { useBags } from "@/hooks/useIndexer";
 import { ADDR, txUrl } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
@@ -25,12 +26,33 @@ type SaleRow = {
 export function SalesTable() {
   const client = usePublicClient();
   const { data: stats } = useStrategyStats();
+  const indexer = useBags();
   const [rows, setRows] = useState<SaleRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
+    if (indexer.usable && indexer.data) {
+      // Source 1 — Ponder indexer. Sales = bags with soldAt set.
+      const sold = indexer.data
+        .filter((b) => b.soldAt !== null && b.soldFor !== null && b.soldTxHash !== null)
+        .map((b) => ({
+          bagId: BigInt(b.bagId),
+          soldFor: BigInt(b.soldFor as string),
+          paidByBot: BigInt(b.paid),
+          block: BigInt(b.blockNumber),
+          ts: b.soldAt as number,
+          tx: b.soldTxHash as `0x${string}`,
+        }))
+        .sort((a, b) => b.ts - a.ts);
+      setRows(sold);
+      setIsLoading(false);
+      return;
+    }
+    if (indexer.loading) return;
+
+    // Source 2 — on-chain getLogs fallback (50k-block window).
     if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
       setIsLoading(false);
       return;
@@ -86,7 +108,7 @@ export function SalesTable() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [client]);
+  }, [client, indexer.usable, indexer.loading, indexer.data]);
 
   const bagSize = stats?.bagSize ?? 0n;
   const visible = usePagedSlice(rows, page, pageSize);

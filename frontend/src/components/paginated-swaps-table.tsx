@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { hookAbi } from "@/lib/abis/swapper";
+import { useSwaps } from "@/hooks/useIndexer";
 import { ADDR, txUrl, addressUrl } from "@/lib/wagmi";
 import { formatEth, formatTokens, shortAddress, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
@@ -20,12 +21,31 @@ type SwapRow = {
 
 export function PaginatedSwapsTable() {
   const client = usePublicClient();
+  const indexer = useSwaps(500);
   const [rows, setRows] = useState<SwapRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(0);
 
   useEffect(() => {
+    if (indexer.usable && indexer.data) {
+      // Source 1 — Ponder indexer. Trader, side, amounts already normalized.
+      const swaps: SwapRow[] = indexer.data.map((s) => ({
+        side: s.side,
+        ethAmount: BigInt(s.ethAmount),
+        tokenAmount: BigInt(s.tokenAmount),
+        tx: s.txHash,
+        block: BigInt(s.blockNumber),
+        ts: s.timestamp,
+        origin: s.trader,
+      }));
+      setRows(swaps);
+      setIsLoading(false);
+      return;
+    }
+    if (indexer.loading) return;
+
+    // Source 2 — on-chain getLogs fallback (50k-block window).
     if (!client || ADDR.hook === "0x0000000000000000000000000000000000000000") {
       setIsLoading(false);
       return;
@@ -80,7 +100,7 @@ export function PaginatedSwapsTable() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [client]);
+  }, [client, indexer.usable, indexer.loading, indexer.data]);
 
   const visible = usePagedSlice(rows, page, pageSize);
 

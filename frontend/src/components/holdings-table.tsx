@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePublicClient, useReadContracts, useWriteContract, useAccount } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
+import { useBags } from "@/hooks/useIndexer";
 import { ADDR } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -26,12 +27,34 @@ export function HoldingsTable() {
   const { data: stats } = useStrategyStats();
   const { isConnected } = useAccount();
   const { writeContract, isPending } = useWriteContract();
+  const indexer = useBags();
   const [rows, setRows] = useState<BagRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
+    if (indexer.usable && indexer.data) {
+      // Source 1 — Ponder indexer. Holdings = bags that were bought by the
+      // protocol (paid > 0) but not yet redeemed (soldAt is null).
+      const bags = indexer.data
+        .filter((b) => b.soldAt === null && BigInt(b.paid) > 0n)
+        .map((b) => ({
+          bagId: BigInt(b.bagId),
+          paid: BigInt(b.paid),
+          listPrice: BigInt(b.listPrice),
+          block: BigInt(b.blockNumber),
+          ts: b.timestamp,
+        }))
+        .sort((a, b) => Number(b.block - a.block));
+      setRows(bags);
+      setIsLoading(false);
+      return;
+    }
+    if (indexer.loading) return;
+
+    // Source 2 — fallback to on-chain getLogs. Used when the indexer is down
+    // or NEXT_PUBLIC_INDEXER_URL is unset. Limited to a 50k-block window.
     if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
       setIsLoading(false);
       return;
@@ -71,7 +94,7 @@ export function HoldingsTable() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [client]);
+  }, [client, indexer.usable, indexer.loading, indexer.data]);
 
   // Live onSale[bagId] reads — filter rows where listPrice still > 0
   const { data: onSaleData } = useReadContracts({
