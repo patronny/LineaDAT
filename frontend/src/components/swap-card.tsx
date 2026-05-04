@@ -10,6 +10,17 @@ import { ADDR, POOL_KEY } from "@/lib/wagmi";
 import { formatEth, formatTokens, sqrtPriceX96ToRatio } from "@/lib/utils";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ArrowDown } from "lucide-react";
+import { EthIcon, LineastrIcon } from "./icons/token-icons";
+
+function TokenBadge({ symbol }: { symbol: string }) {
+  const Icon = symbol === "ETH" ? EthIcon : LineastrIcon;
+  return (
+    <span className="flex-shrink-0 inline-flex items-center gap-1.5 font-semibold text-sm font-mono">
+      <Icon className="w-5 h-5" />
+      {symbol}
+    </span>
+  );
+}
 
 /**
  * Standalone Swap card matching tokenstrategy.com layout: Selling input on top, swap arrow,
@@ -152,7 +163,7 @@ export function SwapCard() {
             >
               Max
             </button>
-            <span className="flex-shrink-0 font-semibold text-sm font-mono">{sellingLabel}</span>
+            <TokenBadge symbol={sellingLabel} />
           </div>
         </div>
 
@@ -179,7 +190,7 @@ export function SwapCard() {
             <span className="flex-1 min-w-0 w-0 text-xl sm:text-2xl font-mono tabular text-muted-foreground truncate">
               {valid ? (estimatedOut ? `≈ ${estimatedOut}` : "…") : "0.0"}
             </span>
-            <span className="flex-shrink-0 font-semibold text-sm font-mono">{buyingLabel}</span>
+            <TokenBadge symbol={buyingLabel} />
           </div>
         </div>
 

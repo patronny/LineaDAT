@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
+import { Check, Copy, ExternalLink } from "lucide-react";
 import { Card } from "./ui/card";
+import { LineastrIcon, LineaIcon } from "./icons/token-icons";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useEthPrice } from "@/hooks/useEthPrice";
 import { usePriceChange24h } from "@/hooks/usePriceChange24h";
 import { hookAbi } from "@/lib/abis/swapper";
-import { ADDR } from "@/lib/wagmi";
+import { ADDR, addressUrl } from "@/lib/wagmi";
 import { lineastrPriceInEth, getEventsChunked } from "@/lib/utils";
 
 /**
@@ -19,6 +21,17 @@ export function StrategyHeader() {
   const ethUsd = useEthPrice();
   const client = usePublicClient();
   const [vol24h, setVol24h] = useState<bigint>(0n);
+  const [copied, setCopied] = useState(false);
+
+  async function copyContractAddress() {
+    try {
+      await navigator.clipboard.writeText(ADDR.strategy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked — silently no-op */
+    }
+  }
 
   // Aggregate ETH-side volume from hook Trade events (last ~24h via chunked queries).
   useEffect(() => {
@@ -79,9 +92,7 @@ export function StrategyHeader() {
       <div className="p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-8">
         {/* Logo + name */}
         <div className="flex items-center gap-4 flex-shrink-0">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-2xl font-bold text-primary-foreground">
-            L
-          </div>
+          <LineastrIcon className="w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0" />
           <div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold leading-tight">
               LineaStrategy
@@ -91,7 +102,33 @@ export function StrategyHeader() {
               <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border font-mono uppercase tracking-wider">
                 ERC-20 on
               </span>
-              <span className="text-muted-foreground">Base Sepolia</span>
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <LineaIcon className="w-3.5 h-3.5" />
+                Linea
+              </span>
+              <a
+                href={addressUrl(ADDR.strategy)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-border bg-secondary/15 text-muted-foreground hover:text-foreground hover:border-secondary/60 focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label="Open contract on block explorer"
+                title="Open on explorer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <button
+                type="button"
+                onClick={copyContractAddress}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-border bg-secondary/15 text-muted-foreground hover:text-foreground hover:border-secondary/60 focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label="Copy contract address"
+                title={copied ? "Copied" : "Copy contract"}
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-green-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </button>
             </div>
           </div>
         </div>
