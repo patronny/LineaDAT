@@ -77,7 +77,10 @@ export function PaginatedSwapsTable() {
               /* ignore */
             }
             return {
-              side: eth > 0n ? ("buy" as const) : ("sell" as const),
+              // v4 BalanceDelta is from swapper's perspective:
+              //   amount0 (ETH) negative → swapper paid ETH → BUY LINEASTR
+              //   amount0 (ETH) positive → swapper received ETH → SELL LINEASTR
+              side: eth < 0n ? ("buy" as const) : ("sell" as const),
               ethAmount: eth < 0n ? -eth : eth,
               tokenAmount: tok < 0n ? -tok : tok,
               tx: e.transactionHash,

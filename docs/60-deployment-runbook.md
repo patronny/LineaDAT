@@ -112,55 +112,121 @@ forge script contracts/script/SimulateCycles.s.sol \
 
 ## Phase 3 — Base Sepolia (публичный testnet, 7 дней)
 
-### 3.1 Deploy
+### 3.1 Deploy (DONE — 2026-05-03)
 
-```bash
-export RPC=https://base-sepolia-rpc.publicnode.com
-forge script contracts/script/Deploy.s.sol \
-  --rpc-url $RPC \
-  --broadcast \
-  --verify \
-  --etherscan-api-key $ETHERSCAN_API_KEY \
-  --private-key $DEPLOYER_PK
-```
+Live testnet addresses (Base Sepolia, chainId 84532):
 
-⚠️ Underlying на Base Sepolia — нет `$LINEA`. Для теста деплоим **mock `LINEA-test`** ERC-20 c initial supply 70B (== mainnet supply $LINEA).
+| Contract | Address |
+|---|---|
+| MockTLINEA | `0x88a8D5ED5D1be44098F226EDf11C3160Fd76421F` |
+| LINEASTRStrategy impl | `0x739f49b48DA56D5C164722ad49A81B527c7b5542` |
+| LINEASTRFactory | `0xeDCA75CdAbcca93399c22fc1815035C71F5f77A6` |
+| LINEASTR proxy | `0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2` |
+| LineastrBot | `0x5CAbfF553d8D7B9564CceE758A22b58c850d23Fc` |
+| Deployer / Owner / Keeper EOA | `0xbc6af64859dF1008c8187F94dF89323000dEE668` |
+| Deploy block | 41022811 |
 
-### 3.2 Bot deployment
+⚠️ Underlying на Base Sepolia — нет `$LINEA`. Используется **MockTLINEA** ERC-20 (faucet 100k/час, cap 100M).
 
-```bash
-cd bot/
-fly launch --name lineastr-bot-a-sepolia --region fra
-fly secrets set BOT_PRIVATE_KEY=$BOT_A_PK RPC_URL=$RPC LINEASTR_PROXY=$DEPLOYED_PROXY
-fly deploy
+### 3.2 Keeper deployment (GitHub Actions, NOT Fly)
 
-fly launch --name lineastr-bot-b-sepolia --region iad
-# тот же private/rpc, разные регионы
-```
+Phase 3 использует GitHub Actions cron, а не Fly bots — `automation/keeper/`,
+workflow `.github/workflows/keeper.yml`, schedule `*/120 * * * *` (каждые 2ч,
+12 запусков/24ч). Фоллбэк-режим: если cron упадёт, owner может вручную дернуть
+`executeRound()` через Basescan write-contract UI. Bot A/B redundancy + Discord
+alerts — ОТДЕЛЬНАЯ Phase 4 задача (см. §4.3).
 
-### 3.3 Frontend
+### 3.3 Frontend (DONE)
 
-```bash
-cd frontend/
-vercel --prod
-# деплоится на lineastr-sepolia.vercel.app
-```
+Production: <https://lineastr.vercel.app>. Vercel env вкладки:
+- `NEXT_PUBLIC_INDEXER_URL` — optional, default hardcoded к Fly URL ниже
+- `NEXT_PUBLIC_RPC_URL` — **НЕ ставить** drpc.org / blastapi.io, `wagmi-client.ts`
+  всё равно auto-skip их, но лучше держать слот для CORS-friendly endpoint
+- `NEXT_PUBLIC_*_ADDRESS` — адреса из таблицы §3.1
 
 ### 3.4 Acceptance criteria для Phase 3
 
-- [ ] 7 дней без crashes у бота
-- [ ] ≥ 50 successful buyTokens / sellTokens циклов (на test mock-LINEA)
+- [x] Frontend live, dashboard рендерит данные с indexer / on-chain
+- [x] Indexer GraphQL backfilled до tip (bags=7, swaps=27 на 2026-05-04)
+- [x] Owner успешно подписал buy/sell tx через Keycard
+- [ ] 7 дней без crashes у keeper
+- [ ] ≥ 50 successful buyTokens / sellTokens циклов
 - [ ] ≥ 5 processTokenTwap циклов
-- [ ] Bot avg profit > 0.02 ETH/цикл (даже на тестовых данных)
-- [ ] Frontend работает с RainbowKit + Keycard, ты успешно подписал минимум 3 разные tx (buy, sell, processTokenTwap)
-- [ ] Discord webhook alerts работают (тестовый pause Bot A → Bot B берёт нагрузку)
+- [ ] Discord webhook alerts (Phase 3.6 — отложено)
+- [ ] Bot B redundancy на Fly (Phase 3.6 — отложено)
+
+## Phase 3.5 — Ponder indexer (production component)
+
+Self-hosted GraphQL indexer на Fly, обслуживает Holdings / Sales / Swaps таблицы
+во фронтенде. Удалось отказаться от brute-force `eth_getLogs × 4500-chunk`
+на каждого посетителя — теперь индексер один раз читает события и сервит
+готовый merged history.
+
+- App: `lineastr-indexer`, region `fra`, persistent volume `lineastr_indexer_data` (1 ГБ)
+- Endpoint: `https://lineastr-indexer.fly.dev/graphql`
+- Стоимость: ~$2/мес
+- Schema: `bag` (bagId pk, paid, listPrice, soldFor?, soldAt?, soldTxHash?, buyer?) + `swap` (id pk = `${blockNumber}-${logIndex}`)
+- Backfill от deploy block: ~2 секунды
+
+При смене адресов strategy/hook (Phase 4 mainnet или любой redeploy):
+
+```bash
+fly secrets set --app lineastr-indexer \
+  STRATEGY_ADDRESS=0x... HOOK_ADDRESS=0x... START_BLOCK=...
+fly deploy --app lineastr-indexer
+```
+
+Persistent volume (`lineastr_indexer_data`) хранит pglite db. Если сменили
+схему / структуру событий / нужен полный reindex — destroy + recreate volume,
+backfill всё равно занимает секунды.
+
+⚠️ **Ponder RPC должен быть rate-stable.** Public endpoints (`publicnode`)
+silently truncate `eth_getLogs` на multi-thousand-block ranges — индексер
+получит частичные данные без error. Используется Tenderly gateway,
+`https://base-sepolia.gateway.tenderly.co`. Для mainnet — Alchemy / Infura key.
+
+### 3.5.1 RPC стратегия (важно для всего Phase 3+)
+
+Browser-side `fallback()` chain в `frontend/src/lib/wagmi-client.ts`:
+1. `NEXT_PUBLIC_RPC_URL` (если задан И не в `KNOWN_NO_CORS` чёрном списке)
+2. `https://sepolia.base.org`
+3. `https://base-sepolia-rpc.publicnode.com`
+4. `https://base-sepolia.gateway.tenderly.co`
+
+`KNOWN_NO_CORS = /(?:drpc\.org|blastapi\.io)/i` — эти endpoint'ы не возвращают
+`Access-Control-Allow-Origin` и блокируют preflight-ы. Если они окажутся в env —
+автоматически выкидываются, но всё равно лучше держать в env только
+CORS-friendly RPC.
 
 ## Phase 4 — Linea mainnet deploy (production)
 
 ⚠️ **Эта фаза необратима. Все pre-flight checks ОБЯЗАТЕЛЬНЫ.**
 
+### 4.0 Известные drift-точки (Codex-аудит 2026-05-04)
+
+Прежде чем стартовать Phase 4, в коде надо закрыть пункты:
+
+- [ ] Production deploy script переписан: `Deploy.s.sol` сейчас reverts при HOOK_SALT,
+  а ссылки в §4.3 на `DeployImplementations.s.sol` / `DeployFactory.s.sol` /
+  `DeployLINEASTR.s.sol` пока не существуют
+- [ ] Hook deploy с корректным immutable `lineastrAddress` (предсказание адреса
+  proxy через CREATE2 + mineHook salt в одном скрипте)
+- [ ] `LINEASTRStrategy.factoryEscape` и `LINEASTRFactory.updateHookAddressUnchecked` —
+  testnet escape hatches, удалить или огородить chain-id guard'ом до mainnet
+- [ ] `LineastrBot.sellEnabled = false` по умолчанию для mainnet (testnet оставлен `true`)
+- [ ] `LINEASTRFactory.buyAndBurnLineastr` сейчас зовёт `swapExactTokensForTokens`,
+  но deployed UniversalRouter exposes `execute(...)` — переписать под v4 command flow
+  (или unify через PoolManager unlock)
+- [ ] Integration tests на real v4 hook fee processing + processTokenTwap +
+  factory buy-and-burn (текущий `Stress.t.sol` делает TWAP no-op, `Sandwich.t.sol`
+  толерантен к swap-failure)
+- [ ] Stage-aware chain/address config во фронтенде (сейчас Base Sepolia hardcoded
+  для hook, swapper, PoolManager slot0, Dexscreener slug)
+- [ ] Keeper `package-lock.json` закоммичен, deploy через `npm ci`
+
 ### 4.1 Pre-flight checks
 
+- [ ] §4.0 drift-точки закрыты
 - [ ] Phase 3 acceptance criteria 100%
 - [ ] [`50-lineastr-spec.md`](50-lineastr-spec.md) review tобой повторно
 - [ ] Slither + Aderyn 0 findings

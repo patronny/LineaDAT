@@ -59,9 +59,10 @@ ponder.on("LineastrStrategy:ERC20SoldByProtocol", async ({ event, context }) => 
 });
 
 /**
- * Hook emits Trade for every user-driven swap against the LINEASTR pool.
- * ethAmount sign distinguishes direction: positive = ETH in (buy LINEASTR),
- * negative = ETH out (sell LINEASTR).
+ * Hook emits Trade(strategy, sqrtPriceX96, delta.amount0(), delta.amount1())
+ * where delta is the BalanceDelta from the swapper's perspective in v4:
+ *   - amount0 (ETH) negative  → swapper paid ETH → BUY LINEASTR
+ *   - amount0 (ETH) positive  → swapper received ETH → SELL LINEASTR
  */
 ponder.on("LineastrHook:Trade", async ({ event, context }) => {
   const eth = event.args.ethAmount as bigint;
@@ -74,7 +75,7 @@ ponder.on("LineastrHook:Trade", async ({ event, context }) => {
       timestamp: Number(event.block.timestamp),
       txHash: event.transaction.hash,
       trader: event.transaction.from,
-      side: eth > 0n ? "buy" : "sell",
+      side: eth < 0n ? "buy" : "sell",
       ethAmount: abs(eth),
       tokenAmount: abs(tok),
       sqrtPriceX96: event.args.sqrtPriceX96 as bigint,
