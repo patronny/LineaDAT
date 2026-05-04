@@ -13,13 +13,15 @@ export const DEFAULT_CHAIN_ID = parseInt(
 );
 
 /**
- * Strategy deploy block — used as the lower bound for full-history event reads
- * (Holdings + Sales tables). Set via NEXT_PUBLIC_DEPLOY_BLOCK on Vercel after
- * deployment. Falls back to 0n if unset (full chain scan — only safe on testnet).
+ * Strategy deploy block — lower bound for full-history event reads (used by
+ * the future Ponder indexer wiring; rolling-window queries don't read this).
+ * Defaults to the live Phase 3 strategy deploy block on Base Sepolia. Override
+ * via NEXT_PUBLIC_DEPLOY_BLOCK after each redeploy. NEVER 0n in production —
+ * a 0n value triggers a 41M-block scan and 4500+ parallel RPC chunk requests.
  */
 export const DEPLOY_BLOCK: bigint = process.env.NEXT_PUBLIC_DEPLOY_BLOCK
   ? BigInt(process.env.NEXT_PUBLIC_DEPLOY_BLOCK)
-  : 0n;
+  : 41022811n;
 
 function addressOr0(envVar: string | undefined): `0x${string}` {
   if (!envVar || !envVar.startsWith("0x") || envVar.length !== 42) {
