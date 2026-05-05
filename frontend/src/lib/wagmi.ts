@@ -15,13 +15,16 @@ export const DEFAULT_CHAIN_ID = parseInt(
 /**
  * Strategy deploy block — lower bound for full-history event reads (used by
  * the future Ponder indexer wiring; rolling-window queries don't read this).
- * Defaults to the live Phase 3 strategy deploy block on Base Sepolia. Override
- * via NEXT_PUBLIC_DEPLOY_BLOCK after each redeploy. NEVER 0n in production —
- * a 0n value triggers a 41M-block scan and 4500+ parallel RPC chunk requests.
+ * Defaults to the LineaDAT Phase 3.5 launch block on Base Sepolia (with launch
+ * gate; previous values from the legacy LINEASTR deploy and the gate-less
+ * LineaDAT deploy are now zombies).
+ * Override via NEXT_PUBLIC_DEPLOY_BLOCK after each redeploy. NEVER 0n in
+ * production — a 0n value triggers a 41M-block scan and 4500+ parallel RPC
+ * chunk requests.
  */
 export const DEPLOY_BLOCK: bigint = process.env.NEXT_PUBLIC_DEPLOY_BLOCK
   ? BigInt(process.env.NEXT_PUBLIC_DEPLOY_BLOCK)
-  : 41022811n;
+  : 41112701n;
 
 function addressOr0(envVar: string | undefined): `0x${string}` {
   if (!envVar || !envVar.startsWith("0x") || envVar.length !== 42) {
@@ -30,16 +33,32 @@ function addressOr0(envVar: string | undefined): `0x${string}` {
   return envVar as `0x${string}`;
 }
 
+/**
+ * Hardcoded fallbacks below point at the LineaDAT Phase 3.5 deployment on Base Sepolia
+ * (with scheduled launch gate). Override via NEXT_PUBLIC_*_ADDRESS env vars on Vercel.
+ * tLINEA stays the same across redeploys (never re-deployed by design).
+ */
+const FALLBACK_TLINEA   = "0x88a8D5ED5D1be44098F226EDf11C3160Fd76421F";
+const FALLBACK_FACTORY  = "0x8498c8542ea2d9BC0CeD3d21EF22d43Dea750A1B";
+const FALLBACK_STRATEGY = "0x615937AE1eB71248DA407F39AcFea9288CF1784F";
+const FALLBACK_BOT      = "0x8FC3c32fd69D714413C1ecD66FA4067b08eE3532";
+const FALLBACK_HOOK     = "0x512dd6871eb3a28aD07885A9B75a2e26eDa2a444";
+const FALLBACK_SWAPPER  = "0x1e4B059b392a8eCee33bCf2D7463D2F201835F91";
+
+function addressOrFallback(envVar: string | undefined, fallback: string): `0x${string}` {
+  if (!envVar || !envVar.startsWith("0x") || envVar.length !== 42) {
+    return fallback as `0x${string}`;
+  }
+  return envVar as `0x${string}`;
+}
+
 export const ADDR = {
-  tLINEA: addressOr0(process.env.NEXT_PUBLIC_TLINEA_ADDRESS),
-  factory: addressOr0(process.env.NEXT_PUBLIC_FACTORY_ADDRESS),
-  strategy: addressOr0(process.env.NEXT_PUBLIC_STRATEGY_ADDRESS),
-  bot: addressOr0(process.env.NEXT_PUBLIC_BOT_ADDRESS),
-  // Phase 3.5 — real Uniswap v4 hook + ETH/LineaDAT pool. Hardcoded fallbacks below
-  // point at the legacy LINEASTR deployment on Base Sepolia (still live until Step 7
-  // redeploys under the LineaDAT brand). Override via env after redeploy.
-  hook: (process.env.NEXT_PUBLIC_HOOK_ADDRESS || "0x61116044DC8eB623A618021cEDB14836D6512444") as `0x${string}`,
-  swapper: (process.env.NEXT_PUBLIC_SWAPPER_ADDRESS || "0x1a1434d72B23B1A968824191195efcf95B07116c") as `0x${string}`,
+  tLINEA:   addressOrFallback(process.env.NEXT_PUBLIC_TLINEA_ADDRESS,   FALLBACK_TLINEA),
+  factory:  addressOrFallback(process.env.NEXT_PUBLIC_FACTORY_ADDRESS,  FALLBACK_FACTORY),
+  strategy: addressOrFallback(process.env.NEXT_PUBLIC_STRATEGY_ADDRESS, FALLBACK_STRATEGY),
+  bot:      addressOrFallback(process.env.NEXT_PUBLIC_BOT_ADDRESS,      FALLBACK_BOT),
+  hook:     addressOrFallback(process.env.NEXT_PUBLIC_HOOK_ADDRESS,     FALLBACK_HOOK),
+  swapper:  addressOrFallback(process.env.NEXT_PUBLIC_SWAPPER_ADDRESS,  FALLBACK_SWAPPER),
 } as const;
 
 /// LineaDAT Uniswap v4 pool key (currency0=ETH, currency1=LineaDAT strategy token, dynamic fee).

@@ -1,7 +1,7 @@
 "use client";
 
 import { DraggableGrid, DraggableSection } from "./draggable-grid";
-import { DexChart } from "./dex-chart";
+import { ChartOrCountdown } from "./chart-or-countdown";
 import { HoldingsTable } from "./holdings-table";
 import { SalesTable } from "./sales-table";
 import { PaginatedSwapsTable } from "./paginated-swaps-table";
@@ -14,8 +14,8 @@ const leftSections: DraggableSection[] = [
   {
     id: "chart",
     title: "$LINEADAT Chart",
-    subtitle: "Powered by Dexscreener (testnet pool may not appear)",
-    render: () => <DexChart />,
+    subtitle: "Pre-launch: countdown to trading open. Post-launch: Dexscreener (testnet pool may not appear).",
+    render: () => <ChartOrCountdown />,
   },
   {
     id: "holdings",

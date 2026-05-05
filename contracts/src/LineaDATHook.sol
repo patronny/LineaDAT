@@ -90,10 +90,17 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
     /*                   STATE VARIABLES                   */
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
 
-    /// @notice Mapping of collection addresses to their deployment timestamps
+    /// @notice Mapping of collection addresses to their deployment timestamps (= when the buy-fee
+    ///         decay clock starts. Set to either block.timestamp at pool init, OR scheduledLaunchTime
+    ///         if it was a future timestamp at init time.)
     mapping(address => uint256) public deploymentTime;
     /// @notice Mapping of collection addresses to custom fee recipient addresses
     mapping(address => address) public feeAddressClaimedByOwner;
+
+    /// @notice Optional global delayed-launch timestamp. If non-zero AND in the future at pool init,
+    ///         all swaps revert until this time, and the buy-fee decay starts from this time.
+    ///         Mutable by lineaDATFactory.owner() until launch happens.
+    uint256 public scheduledLaunchTime;
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
     /*                    CUSTOM ERRORS                    */
@@ -109,6 +116,12 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
     error NotCollectionOwner();
     /// @notice Restrict ExactOutput swaps
     error ExactOutputNotAllowed();
+    /// @notice Trading attempted before scheduledLaunchTime
+    error NotYetLaunched();
+    /// @notice scheduledLaunchTime change attempted after the launch already happened
+    error AlreadyLaunched();
+    /// @notice scheduledLaunchTime must be in the future at the moment of being set
+    error LaunchTimeMustBeFuture();
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
     /*                    CUSTOM EVENTS                    */
@@ -118,6 +131,8 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
     event HookFee(bytes32 indexed id, address indexed sender, uint128 feeAmount0, uint128 feeAmount1);
     /// @notice Emitted when a trade occurs in a strategy pool
     event Trade(address indexed strategy, uint160 sqrtPriceX96, int128 ethAmount, int128 tokenAmount);
+    /// @notice Emitted when the global scheduled launch time is set or moved
+    event ScheduledLaunchTimeSet(uint256 newTime);
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
     /*                     CONSTRUCTOR                     */
@@ -151,6 +166,28 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
     function updateFeeAddress(address _feeAddress) external {
         if (msg.sender != lineaDATFactory.owner()) revert NotStrategyFactoryOwner();
         feeAddress = _feeAddress;
+    }
+
+    /// @notice Set or move the scheduled launch time. Mutable until launch happens.
+    /// @param _t Future unix timestamp at which trading opens and the buy-fee decay clock starts
+    /// @dev Callable by lineaDATFactory.owner(). If the LineaDAT pool was already initialized,
+    ///      this also retroactively bumps deploymentTime[lineaDATAddress] to the new value, so the
+    ///      decay clock and the trading-open gate stay aligned. Reverts if the launch already
+    ///      happened (deploymentTime in the past).
+    function setScheduledLaunchTime(uint256 _t) external {
+        if (msg.sender != lineaDATFactory.owner()) revert NotStrategyFactoryOwner();
+        if (_t <= block.timestamp) revert LaunchTimeMustBeFuture();
+
+        // If pool already initialized, propagate the new time onto deploymentTime
+        // (only allowed before the previously-scheduled launch fires).
+        uint256 currentDeploymentTime = deploymentTime[lineaDATAddress];
+        if (currentDeploymentTime != 0) {
+            if (block.timestamp >= currentDeploymentTime) revert AlreadyLaunched();
+            deploymentTime[lineaDATAddress] = _t;
+        }
+
+        scheduledLaunchTime = _t;
+        emit ScheduledLaunchTimeSet(_t);
     }
 
     /// @notice Updates the fee address for a specific strategy
@@ -266,9 +303,12 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
             revert NotStrategy();
         }
 
-        // Get token1 from the pool key and store its deployment timestamp
+        // Get token1 from the pool key and store its deployment timestamp.
+        // If a future scheduledLaunchTime is set, use it — that becomes the start of the
+        // buy-fee decay clock AND the trading-open gate (enforced in _afterSwap).
         address collection = Currency.unwrap(key.currency1);
-        deploymentTime[collection] = block.timestamp;
+        uint256 t = scheduledLaunchTime > block.timestamp ? scheduledLaunchTime : block.timestamp;
+        deploymentTime[collection] = t;
 
         return BaseHook.beforeInitialize.selector;
     }
@@ -315,6 +355,11 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
         if (params.amountSpecified > 0) {
             revert ExactOutputNotAllowed();
         }
+
+        // Trading-open gate: block all swaps until the scheduled launch time.
+        // deploymentTime[currency1] was set at pool init either to block.timestamp (immediate launch)
+        // or to scheduledLaunchTime (delayed launch). Either way it's the trading-open moment.
+        if (block.timestamp < deploymentTime[Currency.unwrap(key.currency1)]) revert NotYetLaunched();
 
         // Calculate fee based on the swap amount
         bool specifiedTokenIs0 = (params.amountSpecified < 0 == params.zeroForOne);
