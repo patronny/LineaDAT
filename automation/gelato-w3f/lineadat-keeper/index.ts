@@ -1,5 +1,5 @@
 /**
- * LINEASTR Keeper — Gelato Web3 Function (W3F)
+ * LineaDAT Keeper — Gelato Web3 Function (W3F)
  *
  * Replaces the GitHub Actions keeper.yml cron with Gelato's reliable
  * decentralized keeper network. Gelato runs this function on schedule (we'll

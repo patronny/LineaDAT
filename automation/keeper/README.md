@@ -1,4 +1,4 @@
-# LINEASTR Self-Hosted Keeper
+# LineaDAT Self-Hosted Keeper
 
 Replaces unreliable GitHub Actions cron and deprecated Gelato W3F. Runs on
 Fly.io as an always-on machine for ~$2/mo (shared-cpu-1x, 256MB).
@@ -54,7 +54,7 @@ fly logs
 Expected log output:
 
 ```
-LINEASTR keeper start chain=base-sepolia strategy=0x6ddb... bot=0x5CAb... cron=*/30 * * * *
+LineaDAT keeper start chain=base-sepolia strategy=0x6ddb... bot=0x5CAb... cron=*/30 * * * *
 [2026-05-04T01:30:00.000Z] tick#1 state chain=base-sepolia fees=0.0152 funds=0.0152 twap=0.0 bagId=4 signerBal=0.0421
 [2026-05-04T01:30:00.000Z] tick#1 no-op: nothing to do
 [2026-05-04T02:00:00.000Z] tick#2 state ...
@@ -85,7 +85,7 @@ at ~8 gwei).
 - `KEEPER_PK` lives only in Fly secrets, never on disk in plaintext, never in
   git, never in logs
 - Keeper EOA only has permission to call `bot.executeRound`. It cannot drain
-  the strategy or move LINEASTR
+  the strategy or move LineaDAT
 - If keeper key is leaked: rotate the key in `.env` + `fly secrets set` +
   `fly deploy`. The bot contract has no admin coupling to keeper.
 
@@ -94,7 +94,7 @@ at ~8 gwei).
 Once Fly.io deployment is confirmed running for 24h:
 
 ```bash
-gh workflow disable "LINEASTR Keeper"
+gh workflow disable "LineaDAT Keeper"
 ```
 
-Or via UI: Repo → Actions → "LINEASTR Keeper" → ⋯ → Disable workflow.
+Or via UI: Repo → Actions → "LineaDAT Keeper" → ⋯ → Disable workflow.

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npx w3f test lineastr-keeper/index.ts --logs",
-    "build": "npx w3f build lineastr-keeper/index.ts",
-    "deploy": "npx w3f deploy lineastr-keeper/index.ts"
+    "test": "npx w3f test lineadat-keeper/index.ts --logs",
+    "build": "npx w3f build lineadat-keeper/index.ts",
+    "deploy": "npx w3f deploy lineadat-keeper/index.ts"
   },
   "dependencies": {
     "@gelatonetwork/web3-functions-sdk": "^2.4.0",

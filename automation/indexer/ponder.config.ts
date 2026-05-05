@@ -28,13 +28,13 @@ export default createConfig({
     },
   },
   contracts: {
-    LineastrStrategy: {
+    LineaDATStrategy: {
       abi: strategyAbi,
       chain: "baseSepolia",
       address: STRATEGY,
       startBlock: START_BLOCK,
     },
-    LineastrHook: {
+    LineaDATHook: {
       abi: hookAbi,
       chain: "baseSepolia",
       address: HOOK,

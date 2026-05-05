@@ -1,4 +1,4 @@
-# LINEASTR Gelato Web3 Function — Keeper
+# LineaDAT Gelato Web3 Function — Keeper
 
 Replaces the unreliable GitHub Actions cron with Gelato's decentralized keeper
 network. Gelato runs the function on schedule, off-chain checks state, and
@@ -57,7 +57,7 @@ The CLI prints an IPFS CID — copy it.
 Once Gelato is running:
 
 ```bash
-gh workflow disable "LINEASTR Keeper"
+gh workflow disable "LineaDAT Keeper"
 ```
 
 ## How the function decides whether to fire

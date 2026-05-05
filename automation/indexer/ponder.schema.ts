@@ -26,7 +26,7 @@ export const bag = onchainTable(
 );
 
 /**
- * Swap — one row per Trade event from the LINEASTR hook. Captures user-driven
+ * Swap — one row per Trade event from the LineaDAT hook. Captures user-driven
  * buys/sells against the v4 pool (the bot path uses a different code path and
  * does not emit Trade).
  */
@@ -40,7 +40,7 @@ export const swap = onchainTable(
     trader: t.hex().notNull(),         // tx.from at the time of the swap
     side: t.text().notNull(),          // "buy" | "sell"
     ethAmount: t.bigint().notNull(),   // absolute value, wei
-    tokenAmount: t.bigint().notNull(), // absolute value, wei (LINEASTR has 18 decimals)
+    tokenAmount: t.bigint().notNull(), // absolute value, wei (LineaDAT has 18 decimals)
     sqrtPriceX96: t.bigint().notNull(),
   }),
   (table) => ({

@@ -1,5 +1,5 @@
 /**
- * LINEASTR Self-Hosted Keeper
+ * LineaDAT Self-Hosted Keeper
  *
  * Long-running cron service that calls bot.executeRound() when strategy state
  * indicates a productive action is available (fee threshold reached, unsold
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
   const once = process.argv.includes("--once");
 
   console.log(
-    `LINEASTR keeper start chain=${cfg.chainName} strategy=${cfg.strategyAddr} bot=${cfg.botAddr} cron=${cfg.cronSchedule}`
+    `LineaDAT keeper start chain=${cfg.chainName} strategy=${cfg.strategyAddr} bot=${cfg.botAddr} cron=${cfg.cronSchedule}`
   );
 
   if (once) {

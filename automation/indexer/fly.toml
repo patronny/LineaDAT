@@ -1,5 +1,7 @@
-# Ponder indexer for the LINEASTR contracts. Lives next to the keeper as a
+# Ponder indexer for the LineaDAT contracts. Lives next to the keeper as a
 # separate Fly app (independent scaling + restart cycles + memory).
+# NOTE: Fly app id `lineastr-indexer` kept for now to avoid live data migration;
+# rename happens in Step 8 of the LINEASTR -> LineaDAT brand cutover.
 
 app = 'lineastr-indexer'
 primary_region = 'fra'
