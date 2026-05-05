@@ -1,13 +1,13 @@
-# 60. Deployment Runbook — пошаговый план запуска LINEASTR
+# 60. Deployment Runbook — пошаговый план запуска LineaDAT
 
 Полный план: написание контрактов → Anvil fork → Base Sepolia → Linea mainnet.
 
 ## Phase 0 — подготовка (текущий этап, до написания кода)
 
-- [x] Согласована [`50-lineastr-spec.md`](50-lineastr-spec.md) (1 мая 2026)
+- [x] Согласована [`50-lineadat-spec.md`](50-lineadat-spec.md) (1 мая 2026)
 - [x] Скачаны verified исходники прототипов: WBTCSTR v3, REKTSTR v2
 - [ ] **Ты:** генерируешь Owner EOA на Keycard, присылаешь публичный адрес
-- [ ] **Ты:** покупаешь `lineastrategy.com` (за неделю до launch)
+- [ ] **Ты:** покупаешь `on-chaindat.com` (already secured 2026-05-05) (за неделю до launch)
 - [ ] **Я:** генерирую Bot A и Bot B EOA приваты, передаю тебе через secure channel; ты держишь приваты у себя, я использую только для подписи в fly.io secrets
 
 ## Phase 1 — контракты (Этап 2)
@@ -32,14 +32,14 @@ forge install Vectorized/solady
 
 ### 1.3 Файлы
 
-Копируем из `research/tokenworks-sources/` и `research/tokenworks-hook/` в `contracts/src/`, применяя patch-list из [`50-lineastr-spec.md`§8](50-lineastr-spec.md):
+Копируем из `research/tokenworks-sources/` и `research/tokenworks-hook/` в `contracts/src/`, применяя patch-list из [`50-lineadat-spec.md`§8](50-lineadat-spec.md):
 
 ```
 contracts/src/
-  LINEASTRStrategy.sol      ← from ERC20Strategy.sol v3 + MIT-header
+  LineaDATStrategy.sol      ← from ERC20Strategy.sol v3 + MIT-header
   BaseStrategy.sol          ← from BaseStrategy.sol v3 + MIT-header + setTwapIncrement
-  LINEASTRHook.sol          ← from ERC20StrategyHook.sol v3 + MIT-header + LINEASTR-burn rename + edge-case
-  LINEASTRFactory.sol       ← новый (минимальный, не клонируем TokenWorks factory)
+  LineaDATHook.sol          ← from ERC20StrategyHook.sol v3 + MIT-header + LineaDAT-burn rename + edge-case
+  LineaDATFactory.sol       ← новый (минимальный, не клонируем TokenWorks factory)
   Interfaces.sol            ← from src_Interfaces.sol с переименованиями
 ```
 
@@ -77,7 +77,7 @@ anvil --fork-url https://rpc.linea.build --port 8545
 export RPC=http://localhost:8545
 ```
 
-### 2.2 Deploy LINEASTR
+### 2.2 Deploy LineaDAT
 
 ```bash
 forge script contracts/script/Deploy.s.sol \
@@ -108,7 +108,7 @@ forge script contracts/script/SimulateCycles.s.sol \
 Все cycles в `out/anvil-simulation.json`. Анализ:
 - Avg profit бота за цикл: должен быть **> 0.03 ETH**
 - Slow-rug attempts (bot ждёт > 50 блоков и пытается забрать всё): должны fail / yield ограниченную премию
-- Burn-rate LINEASTR: 0.5–2% supply в неделю при $10k/день volume
+- Burn-rate LineaDAT: 0.5–2% supply в неделю при $10k/день volume
 
 ## Phase 3 — Base Sepolia (публичный testnet, 7 дней)
 
@@ -119,10 +119,10 @@ Live testnet addresses (Base Sepolia, chainId 84532):
 | Contract | Address |
 |---|---|
 | MockTLINEA | `0x88a8D5ED5D1be44098F226EDf11C3160Fd76421F` |
-| LINEASTRStrategy impl | `0x739f49b48DA56D5C164722ad49A81B527c7b5542` |
-| LINEASTRFactory | `0xeDCA75CdAbcca93399c22fc1815035C71F5f77A6` |
-| LINEASTR proxy | `0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2` |
-| LineastrBot | `0x5CAbfF553d8D7B9564CceE758A22b58c850d23Fc` |
+| LineaDATStrategy impl | `0x739f49b48DA56D5C164722ad49A81B527c7b5542` |
+| LineaDATFactory | `0xeDCA75CdAbcca93399c22fc1815035C71F5f77A6` |
+| LineaDAT proxy | `0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2` |
+| LineaDATBot | `0x5CAbfF553d8D7B9564CceE758A22b58c850d23Fc` |
 | Deployer / Owner / Keeper EOA | `0xbc6af64859dF1008c8187F94dF89323000dEE668` |
 | Deploy block | 41022811 |
 
@@ -208,13 +208,13 @@ CORS-friendly RPC.
 
 - [ ] Production deploy script переписан: `Deploy.s.sol` сейчас reverts при HOOK_SALT,
   а ссылки в §4.3 на `DeployImplementations.s.sol` / `DeployFactory.s.sol` /
-  `DeployLINEASTR.s.sol` пока не существуют
-- [ ] Hook deploy с корректным immutable `lineastrAddress` (предсказание адреса
+  `DeployLineaDAT.s.sol` пока не существуют
+- [ ] Hook deploy с корректным immutable `lineaDATAddress` (предсказание адреса
   proxy через CREATE2 + mineHook salt в одном скрипте)
-- [ ] `LINEASTRStrategy.factoryEscape` и `LINEASTRFactory.updateHookAddressUnchecked` —
+- [ ] `LineaDATStrategy.factoryEscape` и `LineaDATFactory.updateHookAddressUnchecked` —
   testnet escape hatches, удалить или огородить chain-id guard'ом до mainnet
-- [ ] `LineastrBot.sellEnabled = false` по умолчанию для mainnet (testnet оставлен `true`)
-- [ ] `LINEASTRFactory.buyAndBurnLineastr` сейчас зовёт `swapExactTokensForTokens`,
+- [ ] `LineaDATBot.sellEnabled = false` по умолчанию для mainnet (testnet оставлен `true`)
+- [ ] `LineaDATFactory.buyAndBurnLineaDAT` сейчас зовёт `swapExactTokensForTokens`,
   но deployed UniversalRouter exposes `execute(...)` — переписать под v4 command flow
   (или unify через PoolManager unlock)
 - [ ] Integration tests на real v4 hook fee processing + processTokenTwap +
@@ -228,10 +228,10 @@ CORS-friendly RPC.
 
 - [ ] §4.0 drift-точки закрыты
 - [ ] Phase 3 acceptance criteria 100%
-- [ ] [`50-lineastr-spec.md`](50-lineastr-spec.md) review tобой повторно
+- [ ] [`50-lineadat-spec.md`](50-lineadat-spec.md) review tобой повторно
 - [ ] Slither + Aderyn 0 findings
 - [ ] Bot capital 3 ETH собран на твоём кошельке, готов к раздаче на Bot A/B
-- [ ] `lineastrategy.com` куплен и DNS указывает на Vercel
+- [ ] `on-chaindat.com` (already secured 2026-05-05) куплен и DNS указывает на Vercel
 
 ### 4.2 Hook mining
 
@@ -259,18 +259,18 @@ forge script script/DeployFactory.s.sol \
   --broadcast \
   --verify
 
-# 3. Deploy LINEASTR proxy via Factory
-forge script script/DeployLINEASTR.s.sol \
+# 3. Deploy LineaDAT proxy via Factory
+forge script script/DeployLineaDAT.s.sol \
   --rpc-url https://rpc.linea.build \
   --broadcast \
   --verify
 # this script:
-#   - calls factory.deployStrategy(LINEA, 150_000e18, hookAddress, "LineaStrategy", "LINEASTR", 0.02e18, ownerKeycard)
-#   - sets feeAddressClaimedByOwner[LINEASTR_PROXY] = 0x6e0d01089976093680c881CcDcB79e0D046e2433
+#   - calls factory.deployStrategy(LINEA, 150_000e18, hookAddress, "LineaDAT", "LINEADAT", 0.02e18, ownerKeycard)
+#   - sets feeAddressClaimedByOwner[LineaDAT_PROXY] = 0x6e0d01089976093680c881CcDcB79e0D046e2433
 #   - sets twapIncrement = 0.05e18
 #   - sets twapDelayInBlocks = 4
 #   - initializes Uniswap v4 pool with calibrated sqrtPriceX96
-#   - seeds liquidity (1B LINEASTR single-sided)
+#   - seeds liquidity (1B LineaDAT single-sided)
 #   - sends LP-NFT to 0xdead
 
 # 4. Bot up
@@ -286,7 +286,7 @@ vercel --prod
 ### 4.4 Post-launch monitoring (первые 24 часа)
 
 - [ ] Discord webhook live, на каждый cycle / processTokenTwap / alert
-- [ ] Etherscan/Lineascan watcher на `LINEASTR_PROXY` events
+- [ ] Etherscan/Lineascan watcher на `LineaDAT_PROXY` events
 - [ ] Каждый час check `currentFees`, `ethToTwap`, `lastBuyBlock` через RPC
 - [ ] Bot A/B health через fly.io dashboard
 - [ ] Если что-то не так в первые 24 часа — у тебя есть owner privileges, fixes возможны через `updateHookAddress` или UUPS upgrade
@@ -300,10 +300,10 @@ vercel --prod
 
 ## Phase 5 — Расширение (опционально, после Phase 4 success)
 
-После того, как $LINEASTR работает стабильно ≥ 30 дней:
+После того, как $LINEADAT работает стабильно ≥ 30 дней:
 - Запуск второго токена `$XYZSTR` где underlying = $XYZ (другой токен на Linea), используя ту же factory
-- На втором токене fee split = 80% / 10% LINEASTR-burn / 10% creator (нормальный режим)
-- Каждый новый токен → новые покупки $LINEASTR через `buy-and-burn` block → больше дефляции LINEASTR
+- На втором токене fee split = 80% / 10% LineaDAT-burn / 10% creator (нормальный режим)
+- Каждый новый токен → новые покупки $LINEADAT через `buy-and-burn` block → больше дефляции LineaDAT
 - Это и есть «база для следующих токенов на Linea» из твоего изначального запроса
 
 ## Rollback / emergency procedures

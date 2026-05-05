@@ -94,21 +94,21 @@ LINEA/USDC пулы тоже существуют ($272k etherex-cl 0.01%), но
 
 **Альтернатива для testnet:** Base Sepolia (chainId 84532) — там Uniswap v4 есть, block-time 2 секунды (близко к Linea 3с).
 
-## 5. Pool key для LINEASTR
+## 5. Pool key для LineaDAT
 
 ```solidity
 PoolKey({
     currency0: Currency.wrap(address(0)),                              // native ETH
-    currency1: Currency.wrap(LINEASTR_PROXY_ADDRESS),                  // LINEASTR
+    currency1: Currency.wrap(LineaDAT_PROXY_ADDRESS),                  // LineaDAT
     fee: 0x800000,                                                     // DYNAMIC_FEE_FLAG
     tickSpacing: 60,
-    hooks: IHooks(LINEASTR_HOOK_ADDRESS)
+    hooks: IHooks(LineaDAT_HOOK_ADDRESS)
 })
 ```
 
-`address(0) < любой ERC-20 адрес` лексикографически, поэтому в паре ETH+LINEASTR currency0 = `0x0` строго.
+`address(0) < любой ERC-20 адрес` лексикографически, поэтому в паре ETH+LineaDAT currency0 = `0x0` строго.
 
-## 6. Hook permissions для LINEASTR (CREATE2-mined)
+## 6. Hook permissions для LineaDAT (CREATE2-mined)
 
 Те же 4 permissions как у WBTCSTR v3:
 - `beforeInitialize` (bit 13, 0x2000)
@@ -125,8 +125,8 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 (address hookAddr, bytes32 salt) = HookMiner.find(
     CREATE2_DEPLOYER,                   // 0x0000000000FFe8B47B3e2130213B802212439497
     uint160(0x2444),                    // permission bits
-    type(LINEASTRHook).creationCode,
-    abi.encode(POOL_MANAGER, LINEASTR_PROXY, FACTORY, FEE_ADDRESS)
+    type(LineaDATHook).creationCode,
+    abi.encode(POOL_MANAGER, LineaDAT_PROXY, FACTORY, FEE_ADDRESS)
 );
 ```
 
@@ -136,7 +136,7 @@ Mining обычно занимает 1-10 минут на M1/M2 Macbook.
 
 - **Нет hard gas cap** на hook callback в v4-core
 - Linea L2 газ ~10× дешевле mainnet (≈ $0.01 за simple swap, ≈ $0.05 за swap с hook)
-- Дополнительный двойной свап (для `_afterSwap` на ETH→LINEASTR покупке) добавит ~150k газа = $0.02. Терпимо.
+- Дополнительный двойной свап (для `_afterSwap` на ETH→LineaDAT покупке) добавит ~150k газа = $0.02. Терпимо.
 
 ## 8. Deploy targets
 

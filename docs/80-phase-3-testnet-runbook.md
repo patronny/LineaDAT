@@ -9,10 +9,10 @@
 
 ## Что делает Phase 3
 
-Phase 3 — это live валидация LINEASTR + бота на публичном тестнете (Base Sepolia, ~7 дней). Цель:
+Phase 3 — это live валидация LineaDAT + бота на публичном тестнете (Base Sepolia, ~7 дней). Цель:
 
-1. Подтвердить, что LINEASTRStrategy корректно работает в реальной L2-среде (block timing, gas, sequencer ordering)
-2. Подтвердить, что LineastrBot успешно крутит buyTokens / sellTokens циклы под live keeper trigger'ом (cron-job.org / GitHub Actions)
+1. Подтвердить, что LineaDATStrategy корректно работает в реальной L2-среде (block timing, gas, sequencer ordering)
+2. Подтвердить, что LineaDATBot успешно крутит buyTokens / sellTokens циклы под live keeper trigger'ом (cron-job.org / GitHub Actions)
 3. Frontend (Next.js + RainbowKit + wagmi) работает с реальным RPC и смарт-контрактами
 4. Собрать метрики 7-дневного непрерывного прогона: число успешных раундов, средний `paid` per buy, gas стоимость, времена-до-продажи
 
@@ -22,12 +22,12 @@ Phase 3 — это live валидация LINEASTR + бота на публич
 
 **Деплоится:**
 - ✅ `MockTLINEA` — testnet stub для $LINEA (faucet-enabled ERC20)
-- ✅ `LINEASTRStrategy` impl + proxy через `LINEASTRFactory`
-- ✅ `LineastrBot` (multicall keeper-bot)
+- ✅ `LineaDATStrategy` impl + proxy через `LineaDATFactory`
+- ✅ `LineaDATBot` (multicall keeper-bot)
 - ✅ Owner/keeper/feeAddress настраиваются через env vars
 
 **НЕ деплоится в Phase 3 (отложено до Phase 4 mainnet):**
-- ❌ CREATE2-mined hook (`LINEASTRHook`) — вместо него используется deployer EOA как hookAddress
+- ❌ CREATE2-mined hook (`LineaDATHook`) — вместо него используется deployer EOA как hookAddress
 - ❌ Uniswap v4 pool init (требует hook с правильными permission flags)
 - ❌ LP-NFT seed (требует pool)
 - ❌ `processTokenTwap` execution (требует pool для swap'ов — bot's `_tryTwap` поймает revert через try/catch и продолжит)
@@ -110,7 +110,7 @@ forge verify-contract \
   --chain base-sepolia \
   --etherscan-api-key $BASESCAN_API_KEY \
   $STRATEGY_IMPL_ADDR \
-  src/LINEASTRStrategy.sol:LINEASTRStrategy
+  src/LineaDATStrategy.sol:LineaDATStrategy
 ```
 
 (Опционально, но желательно для прозрачности frontend.)
@@ -122,7 +122,7 @@ forge verify-contract \
 Создать `.github/workflows/keeper.yml`:
 
 ```yaml
-name: LINEASTR Keeper
+name: LineaDAT Keeper
 on:
   schedule:
     - cron: '*/10 * * * *'  # каждые 10 минут
@@ -182,8 +182,8 @@ STRATEGY=0x... SEED_AMOUNT=0.05ether \
 После успешного Phase 3 → Phase 4 (Linea mainnet production):
 1. CREATE2 hook mining + full hook deploy через `Deploy.s.sol`
 2. Uniswap v4 pool initialization с calibrated `sqrtPriceX96`
-3. LP-NFT seed с single-sided liquidity (1B LINEASTR, [-887220, +175020])
+3. LP-NFT seed с single-sided liquidity (1B LineaDAT, [-887220, +175020])
 4. Transfer LP-NFT → `0x000…dEaD`
 5. Lineascan verification всех контрактов
-6. Покупка домена `lineastrategy.com`, deploy frontend на Vercel
+6. Покупка домена `on-chaindat.com` (already secured 2026-05-05), deploy frontend на Vercel
 7. Production keeper migration (если testnet keeper стабилен — оставить ту же архитектуру)
