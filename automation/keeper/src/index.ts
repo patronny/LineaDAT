@@ -118,7 +118,12 @@ async function tick(cfg: KeeperConfig): Promise<void> {
     const roundId = cfg.roundIdOffset + localId + BigInt(Math.floor(Date.now() / 1000));
     const bot = new Contract(cfg.botAddr, BOT_ABI, signer);
     console.log(`${tag} executeRound(${roundId}) reasons=[${reasons.join(",")}]`);
-    const tx = await bot.executeRound(roundId);
+    // Explicit 1.5M gas — eth_estimateGas under-budgets because the bot's
+    // try/catch silently swallows nested-call OOG. processTokenTwap goes 5
+    // levels deep (poolManager.unlock → unlockCallback → swap → afterSwap →
+    // swap-back), and the 63/64 rule strangles the innermost swap when called
+    // with estimated gas. Over-budgeting here costs ~$0 on Base/Linea L2.
+    const tx = await bot.executeRound(roundId, { gasLimit: 1_500_000n });
     console.log(`${tag} sent tx=${tx.hash} nonce=${tx.nonce}`);
     const receipt = await tx.wait();
     console.log(

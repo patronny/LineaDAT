@@ -24,7 +24,7 @@ export default createConfig({
       id: 84532,
       rpc:
         process.env.PONDER_RPC_URL_84532 ??
-        "https://base-sepolia.gateway.tenderly.co",
+        "https://base-sepolia-rpc.publicnode.com",
     },
   },
   contracts: {
