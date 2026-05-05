@@ -1,8 +1,8 @@
 {
-  "name": "lineastr-keeper",
+  "name": "lineadat-keeper",
   "version": "1.0.0",
   "private": true,
-  "description": "Self-hosted cron keeper for LINEASTR bot. Runs on Fly.io. Replaces unreliable GitHub Actions cron + deprecated Gelato W3F.",
+  "description": "Self-hosted cron keeper for the on-chainDAT bot (testnet: LINEASTR on Base Sepolia). Runs on Fly.io. Replaces unreliable GitHub Actions cron + deprecated Gelato W3F.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

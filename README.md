@@ -1,4 +1,10 @@
-# LINEASTR
+# on-chainDAT / LineaDAT
+
+> **Brand reorg (2026-05-05).** Project umbrella renamed to **on-chainDAT** ([on-chaindat.com](https://on-chaindat.com)). First launch on mainnet будет **LineaDAT** (token `$LINEADAT`) — той же архитектурой, что описана ниже. Phase 3 testnet продолжает работать под именем **LINEASTR** на Base Sepolia (deployed contracts не трогаем — доживут до Phase 4 cutover). Repo: `patronny/LineaDAT`.
+
+---
+
+# LINEASTR (Phase 3 testnet — текущий код)
 
 **LineaStrategy** ($LINEASTR) — ERC-20 strategy token на **Linea L2** с underlying **$LINEA**. Точная архитектурная копия `wBTCStrategy` (ERC20Strategy v3 от TokenWorks, MIT) с минимальными правками: PNKSTR-burn заменён на **LINEASTR-burn** (с edge-case «LINEASTR-burn = feeAddress пока collection == LINEASTR_ADDRESS» — для запуска первого токена), параметры калиброваны под Linea (block-time, ликвидность $LINEA, экономика бота).
 

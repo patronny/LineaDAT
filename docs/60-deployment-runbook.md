@@ -138,7 +138,7 @@ alerts — ОТДЕЛЬНАЯ Phase 4 задача (см. §4.3).
 
 ### 3.3 Frontend (DONE)
 
-Production: <https://lineastr.vercel.app>. Vercel env вкладки:
+Production: <https://lineadat.vercel.app> (renamed 2026-05-05; old `lineastr.vercel.app` redirects). Custom domain `on-chaindat.com` — см. §3.5. Vercel env вкладки:
 - `NEXT_PUBLIC_INDEXER_URL` — optional, default hardcoded к Fly URL ниже
 - `NEXT_PUBLIC_RPC_URL` — **НЕ ставить** drpc.org / blastapi.io, `wagmi-client.ts`
   всё равно auto-skip их, но лучше держать слот для CORS-friendly endpoint
