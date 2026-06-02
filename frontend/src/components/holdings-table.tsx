@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useReadContracts, useWriteContract, useAccount } from "wagmi";
+import { usePublicClient, useReadContracts, useWaitForTransactionReceipt, useWriteContract, useAccount } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBags } from "@/hooks/useIndexer";
-import { ADDR } from "@/lib/wagmi";
+import { ADDR, UNDERLYING_SYMBOL } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
+import { SortHeader, useTableSort } from "./ui/sort-header";
 
-type BagRow = {
+export type BagRow = {
   bagId: bigint;
   paid: bigint;        // bot paid this much ETH for the bag
   listPrice: bigint;   // currently listed at this price
@@ -19,24 +20,17 @@ type BagRow = {
 };
 
 /**
- * Holdings table — bags currently for sale (BoughtByProtocol events whose listPrice still > 0).
- * Columns: Date | tLINEA | Paid | Listed At | Buy. Mirrors tokenstrategy.com reference.
+ * Hook: live unsold bag rows shared between HoldingsTable and the dashboard
+ * summary line in the card title. Indexer-first with on-chain getLogs fallback.
  */
-export function HoldingsTable() {
+export function useHoldingsRows(): { rows: BagRow[]; isLoading: boolean } {
   const client = usePublicClient();
-  const { data: stats } = useStrategyStats();
-  const { isConnected } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
   const indexer = useBags();
   const [rows, setRows] = useState<BagRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (indexer.usable && indexer.data) {
-      // Source 1 — Ponder indexer. Holdings = bags that were bought by the
-      // protocol (paid > 0) but not yet redeemed (soldAt is null).
       const bags = indexer.data
         .filter((b) => b.soldAt === null && BigInt(b.paid) > 0n)
         .map((b) => ({
@@ -45,16 +39,12 @@ export function HoldingsTable() {
           listPrice: BigInt(b.listPrice),
           block: BigInt(b.blockNumber),
           ts: b.timestamp,
-        }))
-        .sort((a, b) => Number(b.block - a.block));
+        }));
       setRows(bags);
       setIsLoading(false);
       return;
     }
     if (indexer.loading) return;
-
-    // Source 2 — fallback to on-chain getLogs. Used when the indexer is down
-    // or NEXT_PUBLIC_INDEXER_URL is unset. Limited to a 50k-block window.
     if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
       setIsLoading(false);
       return;
@@ -79,9 +69,7 @@ export function HoldingsTable() {
             };
           })
         );
-        if (!cancelled) {
-          setRows(enriched.sort((a, b) => Number(b.block - a.block)));
-        }
+        if (!cancelled) setRows(enriched);
       } catch (err) {
         console.error("Holdings fetch failed:", err);
       } finally {
@@ -96,7 +84,22 @@ export function HoldingsTable() {
     };
   }, [client, indexer.usable, indexer.loading, indexer.data]);
 
-  // Live onSale[bagId] reads — filter rows where listPrice still > 0
+  return { rows, isLoading };
+}
+
+/**
+ * Aggregate live unsold-bag totals: count, total underlying tokens, total paid (ETH),
+ * total listed-at (ETH). Fed by the same data path as HoldingsTable, plus live
+ * onSale[bagId] reads to reflect bags that have already been sold.
+ */
+export function useHoldingsTotals(): {
+  count: number;
+  totalTokens: bigint;
+  totalPaid: bigint;
+  totalListed: bigint;
+} {
+  const { data: stats } = useStrategyStats();
+  const { rows } = useHoldingsRows();
   const { data: onSaleData } = useReadContracts({
     contracts: rows.map((r) => ({
       address: ADDR.strategy,
@@ -104,10 +107,49 @@ export function HoldingsTable() {
       functionName: "onSale" as const,
       args: [r.bagId],
     })),
-    query: {
-      enabled: rows.length > 0,
-      refetchInterval: 12_000,
-    },
+    query: { enabled: rows.length > 0, refetchInterval: 12_000 },
+  });
+
+  const live = rows
+    .map((r, idx) => {
+      const livePrice = (onSaleData?.[idx]?.result as bigint | undefined) ?? r.listPrice;
+      return { ...r, listPrice: livePrice };
+    })
+    .filter((r) => r.listPrice > 0n);
+
+  const bagSize = stats?.bagSize ?? 0n;
+  return {
+    count: live.length,
+    totalTokens: bagSize * BigInt(live.length),
+    totalPaid: live.reduce((acc, r) => acc + r.paid, 0n),
+    totalListed: live.reduce((acc, r) => acc + r.listPrice, 0n),
+  };
+}
+
+/**
+ * Holdings table - bags currently for sale (BoughtByProtocol events whose listPrice still > 0).
+ * Columns: Date | tLINEA | Paid | Listed At | Buy. Mirrors tokenstrategy.com reference.
+ */
+export function HoldingsTable() {
+  const { data: stats } = useStrategyStats();
+  const { isConnected } = useAccount();
+  // Same double-spend trap as swap-card: wagmi `isPending` only stays true while
+  // the wallet popup is open. Wait for the receipt before re-enabling buttons.
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
+  const txBusy = isPending || isConfirming;
+  const { rows, isLoading } = useHoldingsRows();
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const { data: onSaleData } = useReadContracts({
+    contracts: rows.map((r) => ({
+      address: ADDR.strategy,
+      abi: strategyAbi,
+      functionName: "onSale" as const,
+      args: [r.bagId],
+    })),
+    query: { enabled: rows.length > 0, refetchInterval: 12_000 },
   });
 
   const liveRows = rows
@@ -117,7 +159,14 @@ export function HoldingsTable() {
     })
     .filter((r) => r.listPrice > 0n);
 
-  const visible = usePagedSlice(liveRows, page, pageSize);
+  const cmpBigint = (x: bigint, y: bigint) => (x < y ? -1 : x > y ? 1 : 0);
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(liveRows, "date", {
+    date: (a, b) => a.ts - b.ts,
+    paid: (a, b) => cmpBigint(a.paid, b.paid),
+    listed: (a, b) => cmpBigint(a.listPrice, b.listPrice),
+  });
+
+  const visible = usePagedSlice(sorted, page, pageSize);
 
   function buy(bagId: bigint, price: bigint) {
     writeContract({
@@ -154,12 +203,12 @@ export function HoldingsTable() {
       {/* Desktop / tablet: full table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
+          <thead className="text-xs text-muted-foreground border-b border-border">
             <tr>
-              <th className="text-left py-3 px-4 font-medium">Date</th>
-              <th className="text-left py-3 px-4 font-medium">tLINEA</th>
-              <th className="text-left py-3 px-4 font-medium">Paid</th>
-              <th className="text-left py-3 px-4 font-medium">Listed At</th>
+              <SortHeader field="date" active={sortKey} dir={sortDir} onClick={toggle}>Date</SortHeader>
+              <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">{UNDERLYING_SYMBOL}</th>
+              <SortHeader field="paid" active={sortKey} dir={sortDir} onClick={toggle}>Paid</SortHeader>
+              <SortHeader field="listed" active={sortKey} dir={sortDir} onClick={toggle}>Listed At</SortHeader>
               <th className="text-right py-3 px-4 font-medium"></th>
             </tr>
           </thead>
@@ -174,7 +223,7 @@ export function HoldingsTable() {
                   <Button
                     size="sm"
                     onClick={() => buy(r.bagId, r.listPrice)}
-                    disabled={!isConnected || isPending}
+                    disabled={!isConnected || txBusy}
                   >
                     Buy
                   </Button>
@@ -187,18 +236,18 @@ export function HoldingsTable() {
 
       {/* Mobile: stacked cards */}
       <ul className="md:hidden space-y-2 p-4">
-        {liveRows.map((r) => (
+        {sorted.map((r) => (
           <li key={String(r.bagId)} className="border border-border rounded-md p-3 space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
               <span>{formatTradeDate(r.ts)}</span>
               <span>Bag #{String(r.bagId)}</span>
             </div>
             <div className="text-sm font-mono tabular">
-              {formatTokens(bagSize)} tLINEA — paid {formatEth(r.paid)} ETH
+              {formatTokens(bagSize)} {UNDERLYING_SYMBOL} - paid {formatEth(r.paid)} ETH
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-semibold tabular">{formatEth(r.listPrice)} ETH</span>
-              <Button size="sm" onClick={() => buy(r.bagId, r.listPrice)} disabled={!isConnected || isPending}>
+              <Button size="sm" onClick={() => buy(r.bagId, r.listPrice)} disabled={!isConnected || txBusy}>
                 Buy
               </Button>
             </div>

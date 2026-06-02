@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
+import { useSwaps } from "@/hooks/useIndexer";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { Card } from "./ui/card";
 import { LineastrIcon, LineaIcon } from "./icons/token-icons";
@@ -20,7 +21,8 @@ export function StrategyHeader() {
   const { data } = useStrategyStats();
   const ethUsd = useEthPrice();
   const client = usePublicClient();
-  const [vol24h, setVol24h] = useState<bigint>(0n);
+  const swaps = useSwaps(500);
+  const [vol24hFallback, setVol24hFallback] = useState<bigint>(0n);
   const [copied, setCopied] = useState(false);
 
   async function copyContractAddress() {
@@ -29,15 +31,28 @@ export function StrategyHeader() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — silently no-op */
+      /* clipboard blocked - silently no-op */
     }
   }
 
-  // Aggregate ETH-side volume from hook Trade events (last ~24h via chunked queries).
+  // 24h ETH-side volume. Prefer the indexer's swap rows (GraphQL, no per-tab Infura
+  // getLogs); the chunked on-chain Trade scan is the expensive fallback and now runs
+  // ONLY when the indexer is down (it was firing ~6 getLogs every 30s per tab on the
+  // happy path - by far the costliest frontend RPC source).
+  const indexerVol24h = useMemo<bigint | null>(() => {
+    if (!swaps.usable || !swaps.data) return null;
+    const since = Math.floor(Date.now() / 1000) - 86_400;
+    return swaps.data.reduce(
+      (acc, s) => (s.timestamp >= since ? acc + BigInt(s.ethAmount) : acc),
+      0n
+    );
+  }, [swaps.usable, swaps.data]);
+
   useEffect(() => {
+    if (swaps.usable || swaps.loading) return; // indexer healthy/loading -> skip getLogs
     if (!client || ADDR.hook === "0x0000000000000000000000000000000000000000") return;
     let cancelled = false;
-    async function fetch() {
+    async function fetchVol() {
       try {
         const events = await getEventsChunked(client!, {
           address: ADDR.hook,
@@ -50,18 +65,20 @@ export function StrategyHeader() {
           const eth = BigInt((e as { args: { ethAmount: bigint | number } }).args.ethAmount);
           total += eth < 0n ? -eth : eth;
         }
-        if (!cancelled) setVol24h(total);
+        if (!cancelled) setVol24hFallback(total);
       } catch {
-        // silent — leave volume at 0
+        // silent - leave volume at 0
       }
     }
-    fetch();
-    const id = setInterval(fetch, 30_000);
+    fetchVol();
+    const id = setInterval(fetchVol, 30_000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [client]);
+  }, [client, swaps.usable, swaps.loading]);
+
+  const vol24h = indexerVol24h ?? vol24hFallback;
 
   const pricePerLineastrEth = data ? lineastrPriceInEth(data.sqrtPriceX96) : 0;
   const pricePerLineastrUsd = pricePerLineastrEth * ethUsd;
@@ -75,13 +92,25 @@ export function StrategyHeader() {
   const vol24hUsd = (Number(vol24h) / 1e18) * ethUsd;
 
   const fmtPriceUsd = (n: number) => {
-    if (n === 0) return "—";
-    if (n < 0.0001) return `$${n.toExponential(2)}`;
-    if (n < 1) return `$${n.toFixed(6)}`;
+    if (n === 0) return "-";
+    if (n < 1) {
+      // Render small fractional prices in plain decimal - never scientific - and keep
+      // exactly 3 significant digits (e.g. 0.0000371741... -> 0.0000372). Trailing zeros
+      // trimmed but at least 2 fractional digits preserved.
+      const expanded = n.toFixed(20);
+      const dot = expanded.indexOf(".");
+      const frac = expanded.slice(dot + 1);
+      let firstNonZero = 0;
+      while (firstNonZero < frac.length && frac[firstNonZero] === "0") firstNonZero++;
+      const decimals = Math.max(2, firstNonZero + 3);
+      let trimmed = n.toFixed(decimals).replace(/0+$/, "").replace(/\.$/, "");
+      if (!trimmed.includes(".")) trimmed += ".00";
+      return `$${trimmed}`;
+    }
     return `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   };
   const fmtUsdLarge = (n: number) => {
-    if (n === 0) return "—";
+    if (n === 0) return "-";
     if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
     if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
     return `$${n.toFixed(2)}`;
@@ -133,7 +162,7 @@ export function StrategyHeader() {
           </div>
         </div>
 
-        {/* Inline stats — desktop horizontal, mobile 2-col grid */}
+        {/* Inline stats - desktop horizontal, mobile 2-col grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-1 lg:justify-end gap-3 sm:gap-6 text-xs lg:text-sm">
           <Stat label="$LINEADAT" value={fmtPriceUsd(pricePerLineastrUsd)} />
           <Stat label="Market Cap" value={fmtUsdLarge(marketCapUsd)} />
@@ -143,7 +172,7 @@ export function StrategyHeader() {
             label="24h Change"
             value={
               change24hPct === null
-                ? "—"
+                ? "-"
                 : `${change24hPct >= 0 ? "+" : ""}${change24hPct.toFixed(2)}%`
             }
             muted={change24hPct === null}

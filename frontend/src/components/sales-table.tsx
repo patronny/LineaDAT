@@ -5,12 +5,13 @@ import { usePublicClient } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBags } from "@/hooks/useIndexer";
-import { ADDR, txUrl } from "@/lib/wagmi";
+import { ADDR, txUrl, UNDERLYING_SYMBOL } from "@/lib/wagmi";
 import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
+import { SortHeader, useTableSort } from "./ui/sort-header";
 
-type SaleRow = {
+export type SaleRow = {
   bagId: bigint;
   soldFor: bigint;        // SoldByProtocol price
   paidByBot: bigint;      // BoughtByProtocol purchasePrice for the same bagId
@@ -20,21 +21,17 @@ type SaleRow = {
 };
 
 /**
- * Sales table — past bag sales (SoldByProtocol joined with BoughtByProtocol for the same bagId
- * to compute profit). Columns: Date | tLINEA | Paid | Sold For | Profit.
+ * Hook: live past-sale rows shared between SalesTable and the dashboard
+ * summary line in the card title. Indexer-first with on-chain getLogs fallback.
  */
-export function SalesTable() {
+export function useSalesRows(): { rows: SaleRow[]; isLoading: boolean } {
   const client = usePublicClient();
-  const { data: stats } = useStrategyStats();
   const indexer = useBags();
   const [rows, setRows] = useState<SaleRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (indexer.usable && indexer.data) {
-      // Source 1 — Ponder indexer. Sales = bags with soldAt set.
       const sold = indexer.data
         .filter((b) => b.soldAt !== null && b.soldFor !== null && b.soldTxHash !== null)
         .map((b) => ({
@@ -44,15 +41,12 @@ export function SalesTable() {
           block: BigInt(b.blockNumber),
           ts: b.soldAt as number,
           tx: b.soldTxHash as `0x${string}`,
-        }))
-        .sort((a, b) => b.ts - a.ts);
+        }));
       setRows(sold);
       setIsLoading(false);
       return;
     }
     if (indexer.loading) return;
-
-    // Source 2 — on-chain getLogs fallback (50k-block window).
     if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
       setIsLoading(false);
       return;
@@ -93,9 +87,7 @@ export function SalesTable() {
           })
         );
 
-        if (!cancelled) {
-          setRows(enriched.sort((a, b) => Number(b.block - a.block)));
-        }
+        if (!cancelled) setRows(enriched);
       } catch (err) {
         console.error("Sales fetch failed:", err);
       } finally {
@@ -110,8 +102,55 @@ export function SalesTable() {
     };
   }, [client, indexer.usable, indexer.loading, indexer.data]);
 
+  return { rows, isLoading };
+}
+
+/**
+ * Aggregate past-sale totals: count, total underlying tokens sold (count*bagSize),
+ * total sold-for (ETH), total bot-paid (ETH), and net profit (sold - paid).
+ */
+export function useSalesTotals(): {
+  count: number;
+  totalTokens: bigint;
+  totalSold: bigint;
+  totalPaid: bigint;
+  profit: bigint;
+} {
+  const { data: stats } = useStrategyStats();
+  const { rows } = useSalesRows();
   const bagSize = stats?.bagSize ?? 0n;
-  const visible = usePagedSlice(rows, page, pageSize);
+  const totalSold = rows.reduce((acc, r) => acc + r.soldFor, 0n);
+  const totalPaid = rows.reduce((acc, r) => acc + r.paidByBot, 0n);
+  return {
+    count: rows.length,
+    totalTokens: bagSize * BigInt(rows.length),
+    totalSold,
+    totalPaid,
+    profit: totalSold - totalPaid,
+  };
+}
+
+/**
+ * Sales table - past bag sales (SoldByProtocol joined with BoughtByProtocol for the same bagId
+ * to compute profit). Columns: Date | tLINEA | Paid | Sold For | Profit.
+ */
+export function SalesTable() {
+  const { data: stats } = useStrategyStats();
+  const { rows, isLoading } = useSalesRows();
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const bagSize = stats?.bagSize ?? 0n;
+
+  const cmpBigint = (x: bigint, y: bigint) => (x < y ? -1 : x > y ? 1 : 0);
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(rows, "date", {
+    date: (a, b) => a.ts - b.ts,
+    paid: (a, b) => cmpBigint(a.paidByBot, b.paidByBot),
+    sold: (a, b) => cmpBigint(a.soldFor, b.soldFor),
+    profit: (a, b) => cmpBigint(a.soldFor - a.paidByBot, b.soldFor - b.paidByBot),
+  });
+
+  const visible = usePagedSlice(sorted, page, pageSize);
 
   if (isLoading) {
     return (
@@ -135,13 +174,13 @@ export function SalesTable() {
     <>
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
+          <thead className="text-xs text-muted-foreground border-b border-border">
             <tr>
-              <th className="text-left py-3 px-4 font-medium">Date</th>
-              <th className="text-left py-3 px-4 font-medium">tLINEA</th>
-              <th className="text-left py-3 px-4 font-medium">Paid</th>
-              <th className="text-left py-3 px-4 font-medium">Sold For</th>
-              <th className="text-left py-3 px-4 font-medium">Profit</th>
+              <SortHeader field="date" active={sortKey} dir={sortDir} onClick={toggle}>Date</SortHeader>
+              <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">{UNDERLYING_SYMBOL}</th>
+              <SortHeader field="paid" active={sortKey} dir={sortDir} onClick={toggle}>Paid</SortHeader>
+              <SortHeader field="sold" active={sortKey} dir={sortDir} onClick={toggle}>Sold For</SortHeader>
+              <SortHeader field="profit" active={sortKey} dir={sortDir} onClick={toggle}>Profit</SortHeader>
               <th className="text-right py-3 px-4 font-medium"></th>
             </tr>
           </thead>

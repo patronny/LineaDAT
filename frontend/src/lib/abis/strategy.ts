@@ -1,5 +1,5 @@
 /**
- * LINEASTRStrategy ABI — minimal subset needed by the frontend.
+ * LINEASTRStrategy ABI - minimal subset needed by the frontend.
  * Matches contracts/src/LINEASTRStrategy.sol + BaseStrategy.sol.
  */
 export const strategyAbi = [

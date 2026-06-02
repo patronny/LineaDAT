@@ -17,14 +17,15 @@ export interface DraggableSection {
   id: string;
   /** Plain string for static headers, or a live ReactNode for dynamic ones (e.g. progress %). */
   title: ReactNode;
-  subtitle?: string;
+  /** Static text or a live ReactNode (e.g. computed totals). */
+  subtitle?: ReactNode;
   /** Renderer is a function so we can avoid wasted renders during drag */
   render: () => ReactNode;
   headerRight?: ReactNode;
 }
 
 interface Props {
-  /** Stable storage key — both order + collapse state are namespaced under this */
+  /** Stable storage key - both order + collapse state are namespaced under this */
   storageKey: string;
   sections: DraggableSection[];
 }

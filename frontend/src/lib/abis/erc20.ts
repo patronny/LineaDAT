@@ -1,5 +1,5 @@
 /**
- * Minimal ERC20 ABI — used for tLINEA reads, balance checks, approve.
+ * Minimal ERC20 ABI - used for tLINEA reads, balance checks, approve.
  * Includes the MockTLINEA-specific `faucetClaim` function for the testnet faucet.
  */
 export const erc20Abi = [
@@ -12,7 +12,7 @@ export const erc20Abi = [
   { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
 
-  // MockTLINEA-only — public faucet
+  // MockTLINEA-only - public faucet
   { type: "function", name: "faucetClaim", stateMutability: "nonpayable", inputs: [], outputs: [] },
   { type: "function", name: "FAUCET_AMOUNT", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "FAUCET_COOLDOWN", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },

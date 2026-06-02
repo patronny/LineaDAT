@@ -3,13 +3,13 @@
  * (testnet phase: still indexes the deployed $LINEASTR strategy on Base Sepolia).
  *
  * Indexer source: automation/indexer/. Deployed at NEXT_PUBLIC_INDEXER_URL
- * (default https://lineastr-indexer.fly.dev/graphql — Fly app name kept on
+ * (default https://lineastr-indexer.fly.dev/graphql - Fly app name kept on
  * the legacy `lineastr-` prefix to avoid a live data migration; will be
  * renamed in Phase 4 alongside the mainnet relaunch). Schema covers two
  * tables: `bag` (BoughtByProtocol+SoldByProtocol joined by bagId) and
  * `swap` (hook Trade events).
  *
- * No Apollo / urql / SWR pulled in — one tiny POST helper is enough; React
+ * No Apollo / urql / SWR pulled in - one tiny POST helper is enough; React
  * components manage their own loading state via useEffect + setInterval.
  */
 
@@ -132,7 +132,7 @@ export async function fetchBags(signal?: AbortSignal): Promise<BagRow[]> {
 }
 
 /**
- * Most-recent swaps. limit caps a single fetch — pagination via `after`
+ * Most-recent swaps. limit caps a single fetch - pagination via `after`
  * cursor is not wired into the table UI yet (it pages client-side).
  */
 export async function fetchSwaps(limit = 200, signal?: AbortSignal): Promise<SwapRow[]> {
@@ -215,6 +215,31 @@ export async function fetchBaselineSwapFor24h(
     signal
   );
   return earliest.swaps.items[0] ?? null;
+}
+
+/**
+ * All swaps for a single trader (lowercase address). Used by the portfolio
+ * holdings card to compute avg cost basis. Cap at 1000 rows; testnet users
+ * almost never approach that.
+ */
+export async function fetchSwapsByTrader(
+  trader: string,
+  signal?: AbortSignal
+): Promise<SwapRow[]> {
+  const t = trader.toLowerCase();
+  const data = await gql<{ swaps: Page<SwapRow> }>(
+    `query($trader: String!) {
+      swaps(
+        where: { trader: $trader }
+        orderBy: "timestamp"
+        orderDirection: "asc"
+        limit: 1000
+      ) { items { ${SWAP_FIELDS} } }
+    }`,
+    { trader: t },
+    signal
+  );
+  return data.swaps.items;
 }
 
 /**

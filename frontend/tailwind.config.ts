@@ -14,7 +14,7 @@ const config: Config = {
       },
     },
     extend: {
-      // shadcn/ui design-token-style — palette controlled via CSS variables in globals.css
+      // shadcn/ui design-token-style - palette controlled via CSS variables in globals.css
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

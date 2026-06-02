@@ -1,32 +1,101 @@
 "use client";
 
 import { DraggableGrid, DraggableSection } from "./draggable-grid";
-import { ChartOrCountdown } from "./chart-or-countdown";
-import { HoldingsTable } from "./holdings-table";
-import { SalesTable } from "./sales-table";
+import { ChartOrCountdown, ChartSubtitle } from "./chart-or-countdown";
+import { HoldingsTable, useHoldingsTotals } from "./holdings-table";
+import { SalesTable, useSalesTotals } from "./sales-table";
 import { PaginatedSwapsTable } from "./paginated-swaps-table";
 import { SwapCard } from "./swap-card";
 import { FundingsCard, BotIntentCard, BotIntentTitle, ProgressCard, ProgressTitle } from "./fundings-card";
 import { BurnedCard } from "./burned-card";
 import { ActionsCard } from "./actions-card";
+import { formatEth, formatTokens } from "@/lib/utils";
+import { UNDERLYING_SYMBOL } from "@/lib/wagmi";
+
+/**
+ * Live summary line under the Holdings card title:
+ *   "LineaDAT is holding 450,000 tLINEA bought for 0.0742 ETH, listed for 0.0890 ETH"
+ * Mirrors the tokenstrategy.com header pattern. Falls back to the original
+ * descriptive blurb while the totals are still loading.
+ */
+function HoldingsSubtitle() {
+  const { count, totalTokens, totalPaid, totalListed } = useHoldingsTotals();
+  if (count === 0) {
+    return <span>Bags currently listed for sale. Buy at the listed price.</span>;
+  }
+  const neonGreen = "rgb(74, 222, 128)";
+  const neonGreenGlow = "0 0 6px rgba(74,222,128,0.85), 0 0 14px rgba(74,222,128,0.5)";
+  return (
+    <span>
+      LineaDAT is holding{" "}
+      <span className="text-foreground font-semibold">{formatTokens(totalTokens)} {UNDERLYING_SYMBOL}</span>{" "}
+      bought for{" "}
+      <span className="text-foreground font-semibold">{formatEth(totalPaid)} ETH</span>, listed for{" "}
+      <span className="font-semibold" style={{ color: neonGreen, textShadow: neonGreenGlow }}>
+        {formatEth(totalListed)} ETH
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Live summary line under the Sales card title:
+ *   "LineaDAT sold 450,000 tLINEA for 0.089 ETH, realizing +0.015 ETH profit"
+ * Profit number rendered with a neon glow (green positive, red negative) to
+ * mirror the tokenstrategy.com header. Falls back to the descriptive blurb
+ * while no bags have been redeemed yet.
+ */
+function SalesSubtitle() {
+  const { count, totalTokens, totalSold, totalPaid, profit } = useSalesTotals();
+  if (count === 0) {
+    return <span>Past bag sales. Profit = sold-for minus what the bot paid.</span>;
+  }
+  const positive = profit >= 0n;
+  const profitAbs = profit < 0n ? -profit : profit;
+  const profitColor = positive ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)";
+  const profitGlow = `0 0 6px ${positive ? "rgba(74,222,128,0.85)" : "rgba(248,113,113,0.85)"}, 0 0 14px ${
+    positive ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"
+  }`;
+  return (
+    <span>
+      LineaDAT sold{" "}
+      <span className="text-foreground font-semibold">{formatTokens(totalTokens)} {UNDERLYING_SYMBOL}</span>{" "}
+      for{" "}
+      <span className="text-foreground font-semibold">{formatEth(totalSold)} ETH</span>
+      {totalPaid > 0n ? (
+        <>
+          , realizing{" "}
+          <span
+            className="font-semibold"
+            style={{ color: profitColor, textShadow: profitGlow }}
+          >
+            {positive ? "+" : "-"}
+            {formatEth(profitAbs)} ETH
+          </span>{" "}
+          profit
+        </>
+      ) : null}
+    </span>
+  );
+}
 
 const leftSections: DraggableSection[] = [
   {
     id: "chart",
     title: "$LINEADAT Chart",
-    subtitle: "Pre-launch: countdown to trading open. Post-launch: Dexscreener (testnet pool may not appear).",
+    subtitle: <ChartSubtitle />,
     render: () => <ChartOrCountdown />,
   },
   {
     id: "holdings",
     title: "Holdings",
-    subtitle: "Bags currently listed for sale. Buy at the listed price.",
+    subtitle: <HoldingsSubtitle />,
     render: () => <HoldingsTable />,
   },
   {
     id: "sales",
     title: "Sales",
-    subtitle: "Past bag sales. Profit = sold-for minus what the bot paid.",
+    subtitle: <SalesSubtitle />,
     render: () => <SalesTable />,
   },
   {

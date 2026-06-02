@@ -3,17 +3,19 @@
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBagMarketPriceEth } from "@/hooks/useBagMarketPriceEth";
 import { formatEth, formatTokens } from "@/lib/utils";
+import { UNDERLYING_SYMBOL } from "@/lib/wagmi";
 
 function useFundingsData() {
   const { data } = useStrategyStats();
   const currentFees = data?.currentFees ?? 0n;
+  const availableFunds = data?.availableFunds ?? 0n;
   const treasuryUnderlying = data?.treasuryUnderlying ?? 0n;
   const bagSize = data?.bagSize ?? 0n;
   const totalSupply = data?.totalSupply ?? 1n;
-  const bagMarketPriceEth = useBagMarketPriceEth();
+  const bagMarketPriceEth = useBagMarketPriceEth(bagSize);
 
   // Progress = treasury fees / market cost of one fresh bag (capped at 100%).
-  // The bar freezes at 100% — never resets — until the keeper buys a bag,
+  // The bar freezes at 100% - never resets - until the keeper buys a bag,
   // which drains currentFees and the cycle starts again.
   const progressPct =
     bagMarketPriceEth > 0n
@@ -23,7 +25,7 @@ function useFundingsData() {
   const supplyPct =
     totalSupply > 0n ? (Number((bagSize * 10000n) / totalSupply) / 100).toFixed(2) : "0.00";
 
-  return { currentFees, treasuryUnderlying, bagSize, progressPct, supplyPct, bagMarketPriceEth };
+  return { currentFees, availableFunds, treasuryUnderlying, bagSize, progressPct, supplyPct, bagMarketPriceEth };
 }
 
 /**
@@ -38,7 +40,7 @@ export function FundingsCard() {
       <div className="text-3xl font-display font-bold mt-1 tabular">{formatEth(currentFees)} ETH</div>
       <div className="mt-3">
         <span className="inline-block px-3 py-1.5 text-xs font-mono text-foreground border border-secondary/60 rounded-md bg-secondary/15">
-          + {formatTokens(treasuryUnderlying)} $tLINEA
+          + {formatTokens(treasuryUnderlying)} ${UNDERLYING_SYMBOL}
         </span>
       </div>
     </div>
@@ -46,7 +48,7 @@ export function FundingsCard() {
 }
 
 /**
- * Title for the Bot intent card — "LINEASTR is trying to buy 150,000 tLINEA — 0.01% of supply".
+ * Title for the Bot intent card - "LINEASTR is trying to buy 150,000 tLINEA - 0.01% of supply".
  * Replaces what used to be the static "Bot intent" header label and the in-body
  * intent text (per design pass 2026-05-04).
  */
@@ -62,30 +64,33 @@ export function BotIntentTitle() {
   else compact = formatTokens(bagSize);
   return (
     <span>
-      Trying to buy <span className="font-mono">{compact} tLINEA</span>
+      Trying to buy <span className="font-mono">{compact} {UNDERLYING_SYMBOL}</span>
     </span>
   );
 }
 
 /**
- * Card body — only the headline bag size + current bid. Intent text lives in
+ * Card body - only the headline bag size + current bid. Intent text lives in
  * the card title now (BotIntentTitle).
  */
 export function BotIntentCard() {
-  const { currentFees, bagSize } = useFundingsData();
+  // "Current bid" = availableFunds (the ramped ETH the protocol actually bids for the
+  // next bag), NOT currentFees (the full pot, shown in FundingsCard as "currently holding").
+  // These differ while the buy ramp lags accrued fees; previously both read currentFees.
+  const { availableFunds, bagSize } = useFundingsData();
   return (
     <div className="p-4 sm:p-5 space-y-3">
-      <div className="text-3xl font-display font-bold tabular">{formatTokens(bagSize)} tLINEA</div>
+      <div className="text-3xl font-display font-bold tabular">{formatTokens(bagSize)} {UNDERLYING_SYMBOL}</div>
       <div className="border-t border-border pt-3 flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Current bid</span>
-        <span className="font-mono tabular">{formatEth(currentFees)} ETH</span>
+        <span className="font-mono tabular">{formatEth(availableFunds)} ETH</span>
       </div>
     </div>
   );
 }
 
 /**
- * Dynamic title for the Progress card — "55.5% Progress to the next bag".
+ * Dynamic title for the Progress card - "55.5% Progress to the next bag".
  * Shown inside CardShell's <h3>; updates whenever stats refetch.
  */
 export function ProgressTitle() {

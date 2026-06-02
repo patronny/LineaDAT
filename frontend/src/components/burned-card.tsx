@@ -5,13 +5,11 @@ import { formatTokens } from "@/lib/utils";
 import { Flame } from "lucide-react";
 
 /**
- * Burned amount with realistic layered fire backdrop:
- *   1. coal bed at the bottom (deep red glow)
- *   2. main flame body (orange + red, ~2.4s flicker)
- *   3. inner mid flames (~1.7s, side-to-side wobble)
- *   4. yellow/white flame tips (~1.1s, vertical pulse)
- *   5. sparks layer — tiny embers rising upward (~3s loop)
- *   6. dark vignette around the edges so the fire looks contained
+ * Burned amount with hardcore cyberpunk neon "fire" backdrop. Layers stacked
+ * bottom-up: violet coal bed -> magenta body -> magenta+cyan mid -> electric
+ * cyan tips -> rising magenta/cyan/yellow sparks -> perspective circuit grid
+ * -> CRT scanlines -> single sweeping cyan scan beam -> dark vignette ->
+ * neon-bordered frame -> RGB-split / glitch text.
  */
 export function BurnedCard() {
   const { data } = useStrategyStats();
@@ -19,36 +17,71 @@ export function BurnedCard() {
   const totalSupply = data?.totalSupply ?? 0n;
 
   let pctStr = "0.00%";
-  if (totalSupply > 0n) {
+  if (burned > 0n && totalSupply > 0n) {
     const bps = Number((burned * 10000n) / totalSupply);
     pctStr = bps < 1 ? "<0.01%" : `${(bps / 100).toFixed(2)}%`;
   }
 
   return (
-    <div className="relative overflow-hidden bg-[#0a0200] p-4 sm:p-5 min-h-[180px]">
+    <div
+      className="relative overflow-hidden bg-[#06000d] p-4 sm:p-5 min-h-[180px] border border-fuchsia-500/40 rounded-md"
+      style={{
+        boxShadow:
+          "inset 0 0 24px rgba(255, 45, 172, 0.18), 0 0 12px rgba(255, 45, 172, 0.18), 0 0 22px rgba(0, 240, 255, 0.08)",
+      }}
+    >
+      {/* perspective circuit grid floor */}
+      <div className="fire-grid absolute inset-x-0 bottom-0 h-2/3 pointer-events-none" aria-hidden />
       {/* coal bed */}
       <div className="fire-coal absolute inset-x-0 bottom-0 h-1/2 pointer-events-none" aria-hidden />
-      {/* main flame */}
+      {/* main neon flame */}
       <div className="fire-bg absolute inset-0 pointer-events-none" aria-hidden />
-      {/* mid wobble */}
+      {/* mid wobble (magenta + cyan) */}
       <div className="fire-bg-2 absolute inset-0 pointer-events-none" aria-hidden />
-      {/* hot tips */}
+      {/* electric cyan tips */}
       <div className="fire-bg-3 absolute inset-x-0 bottom-0 h-2/3 pointer-events-none" aria-hidden />
       {/* rising sparks */}
       <div className="fire-sparks absolute inset-0 pointer-events-none" aria-hidden />
+      {/* sweeping cyan scan beam */}
+      <div className="fire-scan-beam absolute inset-0 pointer-events-none" aria-hidden />
+      {/* CRT scanlines */}
+      <div className="fire-scanlines absolute inset-0 pointer-events-none" aria-hidden />
       {/* edge vignette */}
       <div className="fire-vignette absolute inset-0 pointer-events-none" aria-hidden />
 
-      <div className="relative z-10 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] space-y-1.5">
-        <div className="flex items-center gap-2 text-base sm:text-lg uppercase tracking-wider font-semibold opacity-95">
-          <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-orange-300 animate-pulse" />
+      <div className="relative z-10 text-white space-y-1.5">
+        <div
+          className="flex items-center gap-2 text-base sm:text-lg uppercase tracking-[0.18em] font-semibold"
+          style={{
+            textShadow:
+              "0 0 6px rgba(255, 45, 172, 0.85), 0 0 16px rgba(255, 45, 172, 0.5), 0 0 28px rgba(0, 240, 255, 0.3)",
+          }}
+        >
+          <Flame
+            className="w-4 h-4 sm:w-5 sm:h-5 text-fuchsia-400 animate-pulse"
+            fill="currentColor"
+            stroke="rgb(255, 200, 240)"
+            strokeWidth={1.5}
+            style={{
+              filter:
+                "drop-shadow(0 0 4px rgba(255, 45, 172, 0.95)) drop-shadow(0 0 10px rgba(255, 0, 170, 0.7))",
+            }}
+          />
           $LINEADAT burned
         </div>
         <div className="flex items-baseline gap-2 font-display font-bold">
-          <span className="text-3xl sm:text-4xl tabular">{pctStr}</span>
-          <span className="text-base sm:text-lg opacity-90 font-sans font-normal">of supply</span>
+          <span className="text-3xl sm:text-4xl tabular neon-glitch">{pctStr}</span>
+          <span
+            className="text-base sm:text-lg font-sans font-normal text-cyan-200/95"
+            style={{ textShadow: "0 0 6px rgba(0, 240, 255, 0.6)" }}
+          >
+            of supply
+          </span>
         </div>
-        <div className="text-base sm:text-lg font-mono tabular opacity-95">
+        <div
+          className="text-base sm:text-lg font-mono tabular text-fuchsia-100/95"
+          style={{ textShadow: "0 0 6px rgba(255, 45, 172, 0.55)" }}
+        >
           {formatTokens(burned)} tokens
         </div>
       </div>

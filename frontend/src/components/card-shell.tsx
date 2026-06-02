@@ -10,7 +10,7 @@ interface CardShellProps {
   id: string;
   /** Title can be a plain string or a live React node for dynamic headers (e.g. "55.5% Progress…"). */
   title: ReactNode;
-  subtitle?: string;
+  subtitle?: ReactNode;
   collapsed: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -47,7 +47,7 @@ export function CardShell({ id, title, subtitle, collapsed, onToggle, children, 
           </button>
           <div className="flex-1 min-w-0">
             <h3 className="font-display font-semibold text-sm uppercase tracking-wider truncate">{title}</h3>
-            {subtitle ? <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p> : null}
+            {subtitle ? <div className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</div> : null}
           </div>
           {headerRight ? <div className="flex-shrink-0">{headerRight}</div> : null}
           <button

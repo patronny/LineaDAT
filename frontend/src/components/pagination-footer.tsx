@@ -14,7 +14,7 @@ interface Props {
 
 /**
  * Reusable table pagination footer. Caller is responsible for slicing rows.
- * Footer hides itself entirely when totalRows <= 10 — no controls needed.
+ * Footer hides itself entirely when totalRows <= 10 - no controls needed.
  */
 export function PaginationFooter({ page, pageSize, totalRows, onPageChange, onPageSizeChange }: Props) {
   if (totalRows <= 10) return null;

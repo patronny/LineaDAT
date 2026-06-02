@@ -1,46 +1,99 @@
 "use client";
 
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useEffect } from "react";
+import {
+  useAccount,
+  useBlockNumber,
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 import { Button } from "./ui/button";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { erc20Abi } from "@/lib/abis/erc20";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
-import { ADDR } from "@/lib/wagmi";
+import { ADDR, DEFAULT_CHAIN_ID } from "@/lib/wagmi";
 import { formatEth } from "@/lib/utils";
 
 /**
- * Actions card — quick-access secondary actions: Approve tLINEA (for bot bag flow),
- * Trigger TWAP (anyone earns 0.5% reward), Faucet (claim 100k tLINEA per hour).
+ * Actions card - quick-access secondary actions: Approve tLINEA (for bot bag flow),
+ * Trigger TWAP (anyone earns 0.5% reward), Faucet (claim 300k tLINEA per hour
+ * via the dedicated LineaDATFaucet wrapper; legacy MockTLINEA.faucetClaim 100k
+ * still works on-chain but the UI no longer surfaces it).
  */
+const faucetAbi = [
+  {
+    type: "function",
+    name: "claim",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "lastFaucetAt",
+    stateMutability: "view",
+    inputs: [{ type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;
 export function ActionsCard() {
-  const { data: stats } = useStrategyStats();
+  const { data: stats, refetch: refetchStats } = useStrategyStats();
   const { address, isConnected } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+  // Poll the block height on the same 12s cadence as the rest of the dashboard instead
+  // of wagmi's ~4s watch:true (the only auto-block-watcher in the app, firing ~15
+  // eth_blockNumber/min per tab just to drive this cosmetic TWAP-cooldown counter).
+  const { data: blockNumber } = useBlockNumber({ query: { refetchInterval: 12_000 } });
 
-  const { data: tlineaBal } = useReadContract({
+  const { data: tlineaBal, refetch: refetchTBal } = useReadContract({
     address: ADDR.tLINEA,
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: { enabled: !!address, refetchInterval: 12_000 },
   });
-  const { data: tlineaAllowance } = useReadContract({
+  const { data: tlineaAllowance, refetch: refetchTAllow } = useReadContract({
     address: ADDR.tLINEA,
     abi: erc20Abi,
     functionName: "allowance",
     args: address ? [address, ADDR.strategy] : undefined,
     query: { enabled: !!address, refetchInterval: 12_000 },
   });
-  const { data: lastFaucet } = useReadContract({
-    address: ADDR.tLINEA,
-    abi: erc20Abi,
+  const { data: lastFaucet, refetch: refetchLastFaucet } = useReadContract({
+    address: ADDR.faucet,
+    abi: faucetAbi,
     functionName: "lastFaucetAt",
     args: address ? [address] : undefined,
     query: { enabled: !!address, refetchInterval: 30_000 },
   });
 
+  // Re-pull every reactive read the moment a write confirms - otherwise stale
+  // state lingers ~12s (next polling tick) and users rage-click the button
+  // straight into TwapDelayNotMet / faucet cooldown reverts.
+  useEffect(() => {
+    if (!isConfirmed) return;
+    refetchStats();
+    refetchTBal();
+    refetchTAllow();
+    refetchLastFaucet();
+  }, [isConfirmed, refetchStats, refetchTBal, refetchTAllow, refetchLastFaucet]);
+
   const ethToTwap = stats?.ethToTwap ?? 0n;
   const twapReady = ethToTwap > 0n;
+  const lastTwapBlock = stats?.lastTwapBlock ?? 0n;
+  const twapDelayInBlocks = stats?.twapDelayInBlocks ?? 0n;
+  // processTokenTwap reverts with TwapDelayNotMet() while
+  //   block.number < lastTwapBlock + twapDelayInBlocks
+  // (BaseStrategy / LineaDATStrategy). Mirror that on the button so the user
+  // physically cannot fire the second burn into the 4-block cooldown window.
+  const nextTwapBlock = lastTwapBlock + twapDelayInBlocks;
+  const blocksUntilTwap =
+    blockNumber !== undefined && nextTwapBlock > blockNumber
+      ? Number(nextTwapBlock - blockNumber)
+      : 0;
+  const twapCooldown = blocksUntilTwap > 0;
 
   const bagSize = stats?.bagSize ?? 0n;
   const availableFunds = stats?.availableFunds ?? 0n;
@@ -53,6 +106,12 @@ export function ActionsCard() {
   const now = Math.floor(Date.now() / 1000);
   const faucetReady = last === 0 || now - last >= cooldown;
 
+  const txBusy = isPending || isConfirming;
+
+  // Stage-aware copy: Linea mainnet uses canonical $LINEA and has no faucet / testnet ETH tap.
+  const isMainnet = DEFAULT_CHAIN_ID === 59144;
+  const ut = isMainnet ? "$LINEA" : "$tLINEA";
+
   function approveTlinea() {
     writeContract({ address: ADDR.tLINEA, abi: erc20Abi, functionName: "approve", args: [ADDR.strategy, bagSize] });
   }
@@ -63,7 +122,7 @@ export function ActionsCard() {
     writeContract({ address: ADDR.strategy, abi: strategyAbi, functionName: "processTokenTwap" });
   }
   function claimFaucet() {
-    writeContract({ address: ADDR.tLINEA, abi: erc20Abi, functionName: "faucetClaim" });
+    writeContract({ address: ADDR.faucet, abi: faucetAbi, functionName: "claim" });
   }
 
   return (
@@ -73,23 +132,27 @@ export function ActionsCard() {
             variant="secondary"
             className="w-full"
             onClick={approveTlinea}
-            disabled={!isConnected || isPending || !enoughT}
+            disabled={!isConnected || txBusy || !enoughT}
           >
-            {!enoughT ? "Get tLINEA from faucet first" : isPending ? "Approving..." : "Approve $tLINEA"}
+            {!enoughT
+              ? isMainnet ? "Get $LINEA first" : "Get tLINEA from faucet first"
+              : txBusy ? "Approving..." : `Approve ${ut}`}
           </Button>
         ) : (
           <Button
             className="w-full"
             onClick={sellBag}
-            disabled={!isConnected || isPending || !canSellBag}
+            disabled={!isConnected || txBusy || !canSellBag}
           >
             {availableFunds === 0n
-              ? "No fees yet — wait for next bot round"
+              ? isMainnet ? "No fees yet - awaiting keeper round" : "No fees yet - wait for next bot round"
               : !enoughT
-                ? "Need 150k tLINEA to sell a bag"
-                : isPending
+                ? isMainnet ? `Need ${ut} to sell a bag` : "Need 150k tLINEA to sell a bag"
+                : txBusy
                   ? "Selling bag..."
-                  : `Sell 150k tLINEA bag → ${formatEth(availableFunds)} ETH`}
+                  : isMainnet
+                    ? `Sell ${ut} bag → ${formatEth(availableFunds)} ETH`
+                    : `Sell 150k tLINEA bag → ${formatEth(availableFunds)} ETH`}
           </Button>
         )}
 
@@ -97,27 +160,45 @@ export function ActionsCard() {
           variant="secondary"
           className="w-full"
           onClick={triggerTwap}
-          disabled={!isConnected || isPending || !twapReady}
+          disabled={!isConnected || txBusy || !twapReady || twapCooldown}
         >
           {!twapReady
             ? "No ETH to TWAP yet"
-            : isPending
+            : txBusy
               ? "Burning..."
-              : `Trigger TWAP — ${formatEth(ethToTwap)} ETH pending burn`}
+              : twapCooldown
+                ? `TWAP cooldown: ${blocksUntilTwap} block${blocksUntilTwap === 1 ? "" : "s"}`
+                : `Trigger TWAP · ${formatEth(ethToTwap)} ETH`}
         </Button>
 
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={claimFaucet}
-          disabled={!isConnected || isPending || !faucetReady}
-        >
-          {!faucetReady
-            ? `Faucet cooldown: ${Math.ceil((cooldown - (now - last)) / 60)} min`
-            : isPending
-              ? "Claiming..."
-              : "Faucet — claim 100k tLINEA"}
-        </Button>
+        {/* Faucet + testnet-ETH tap exist only on the Base Sepolia testnet. On Linea
+            mainnet users bridge real ETH and acquire canonical $LINEA on a DEX. */}
+        {!isMainnet && (
+          <>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={claimFaucet}
+              disabled={!isConnected || txBusy || !faucetReady}
+            >
+              {!faucetReady
+                ? `Faucet cooldown: ${Math.ceil((cooldown - (now - last)) / 60)} min`
+                : txBusy
+                  ? "Claiming..."
+                  : "Faucet - claim 300k tLINEA"}
+            </Button>
+
+            <Button asChild variant="secondary" className="w-full">
+              <a
+                href="https://portal.cdp.coinbase.com/products/faucet"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Get Base Sepolia ETH ↗
+              </a>
+            </Button>
+          </>
+        )}
     </div>
   );
 }

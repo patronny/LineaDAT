@@ -3,40 +3,42 @@ import { SVGProps } from "react";
 /**
  * Inline SVG token / network icons used in the strategy header and swap card.
  *
- *   <LineastrIcon />  — chunky black circle + neon cyan capital "L" with a
- *                       small dot at the top-right of the L. This is the
- *                       LINEASTR token mark (logo mark above strategy name).
+ *   <LineastrIcon />  - LineaDAT token mark: black disc with magenta L (same
+ *                       geometry as <LineaIcon>, but pink instead of cyan).
+ *                       Pink mirrors the project's --primary token and the
+ *                       browser-tab favicon.
  *
- *   <LineaIcon />     — same geometry, inverted: cyan circle + black L. This
- *                       is the LINEA L2 network badge used inline next to
- *                       chain text.
+ *   <LineaIcon />     - LINEA L2 network badge: cyan circle + black L. Used
+ *                       inline next to chain-name text.
  *
- *   <EthIcon />       — classic Ethereum multi-tone diamond.
+ *   <EthIcon />       - classic Ethereum multi-tone diamond.
  *
  * All three accept any standard <svg> prop, so callers control size via
  * className (`w-5 h-5`, `w-12 h-12`, …) or width/height. None of them
- * carry their own background — they are pure marks meant to sit on top
+ * carry their own background - they are pure marks meant to sit on top
  * of arbitrary card surfaces.
  */
 
 const NEON_CYAN = "hsl(180 100% 50%)";
+const NEON_PINK = "#ff33cc";
+const INK = "#0a0a0f";
 
 export function LineastrIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <circle cx="32" cy="32" r="30" fill="#0a0a0f" />
-      <circle cx="32" cy="32" r="29" fill="none" stroke={NEON_CYAN} strokeWidth="0.8" opacity="0.5" />
-      {/* L stroke — left vertical + bottom horizontal */}
+      <circle cx="32" cy="32" r="30" fill={INK} />
+      <circle cx="32" cy="32" r="29" fill="none" stroke={NEON_PINK} strokeWidth="0.8" opacity="0.5" />
+      {/* L stroke - left vertical + bottom horizontal */}
       <path
         d="M 20 14 L 20 48 L 42 48"
-        stroke={NEON_CYAN}
+        stroke={NEON_PINK}
         strokeWidth="8"
         fill="none"
         strokeLinecap="square"
         strokeLinejoin="miter"
       />
       {/* dot at the top-right of the L */}
-      <circle cx="40" cy="16" r="3.5" fill={NEON_CYAN} />
+      <circle cx="40" cy="16" r="3.5" fill={NEON_PINK} />
     </svg>
   );
 }

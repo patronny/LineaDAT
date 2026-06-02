@@ -2,7 +2,8 @@
 
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { baseSepolia, linea } from "wagmi/chains";
-import { http, fallback } from "viem";
+import { http } from "viem";
+import { DEFAULT_CHAIN_ID } from "./wagmi";
 
 /**
  * Client-only wagmi + RainbowKit configuration.
@@ -10,35 +11,34 @@ import { http, fallback } from "viem";
  * Server pages should import from `./wagmi` (server-safe constants only).
  */
 
-// Placeholder projectId — used when env var is unset (e.g. local dev, preview deploy).
+// Placeholder projectId - used when env var is unset (e.g. local dev, preview deploy).
 // Replace via NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID for production. WalletConnect mobile
 // won't work without a real ID, but injected wallets (MetaMask, Rabby) will.
 const wcProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
   "00000000000000000000000000000000";
 
-// Base Sepolia RPC fallback chain. NEXT_PUBLIC_RPC_URL (if set) is tried first
-// but never replaces the chain — drpc.org and blastapi.io free tiers don't
-// return Access-Control-Allow-Origin and lock browser eth_calls at preflight,
-// so we always keep CORS-friendly endpoints behind any custom RPC.
-const customRpc = process.env.NEXT_PUBLIC_RPC_URL;
-const KNOWN_NO_CORS = /(?:drpc\.org|blastapi\.io)/i;
-const corsFriendlyFallbacks = [
-  http("https://sepolia.base.org"),
-  http("https://base-sepolia-rpc.publicnode.com"),
-  http("https://base-sepolia.gateway.tenderly.co"),
-];
-const baseSepoliaRpcs = customRpc && !KNOWN_NO_CORS.test(customRpc)
-  ? [http(customRpc), ...corsFriendlyFallbacks]
-  : corsFriendlyFallbacks;
+// Stage-aware: expose EXACTLY ONE active chain, chosen by NEXT_PUBLIC_CHAIN_ID.
+// Linea mainnet (59144) for the production / mainnet deployment; Base Sepolia (84532)
+// for the legacy Phase 3.5 testnet. A single-chain config means unconnected reads
+// (useReadContract with no explicit chainId) resolve to the right network instead of
+// silently defaulting to chains[0] - which is what made the launch countdown read the
+// wrong chain when Base Sepolia was listed first.
+const activeChains =
+  DEFAULT_CHAIN_ID === linea.id ? ([linea] as const) : ([baseSepolia] as const);
+
+// Linea mainnet RPC = paid Infura (NEXT_PUBLIC_LINEA_RPC_URL); Infura is CORS-friendly so
+// it serves browser eth_calls directly. Base Sepolia keeps its public fallback.
+const lineaRpc = process.env.NEXT_PUBLIC_LINEA_RPC_URL || "https://rpc.linea.build";
+const baseSepoliaRpc = process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.base.org";
 
 export const config = getDefaultConfig({
   appName: "LineaDAT",
   projectId: wcProjectId,
-  chains: [baseSepolia, linea],
+  chains: activeChains,
   transports: {
-    [baseSepolia.id]: fallback(baseSepoliaRpcs, { rank: false, retryCount: 2 }),
-    [linea.id]: http("https://rpc.linea.build"),
+    [linea.id]: http(lineaRpc),
+    [baseSepolia.id]: http(baseSepoliaRpc),
   },
   ssr: true,
 });

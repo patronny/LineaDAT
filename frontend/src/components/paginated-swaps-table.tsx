@@ -8,6 +8,7 @@ import { ADDR, txUrl, addressUrl } from "@/lib/wagmi";
 import { formatEth, formatTokens, shortAddress, formatTradeDate, getEventsChunked } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
+import { SortHeader, useTableSort } from "./ui/sort-header";
 
 type SwapRow = {
   side: "buy" | "sell";
@@ -29,7 +30,7 @@ export function PaginatedSwapsTable() {
 
   useEffect(() => {
     if (indexer.usable && indexer.data) {
-      // Source 1 — Ponder indexer. Trader, side, amounts already normalized.
+      // Source 1 - Ponder indexer. Trader, side, amounts already normalized.
       const swaps: SwapRow[] = indexer.data.map((s) => ({
         side: s.side,
         ethAmount: BigInt(s.ethAmount),
@@ -45,7 +46,7 @@ export function PaginatedSwapsTable() {
     }
     if (indexer.loading) return;
 
-    // Source 2 — on-chain getLogs fallback (50k-block window).
+    // Source 2 - on-chain getLogs fallback (50k-block window).
     if (!client || ADDR.hook === "0x0000000000000000000000000000000000000000") {
       setIsLoading(false);
       return;
@@ -105,7 +106,16 @@ export function PaginatedSwapsTable() {
     };
   }, [client, indexer.usable, indexer.loading, indexer.data]);
 
-  const visible = usePagedSlice(rows, page, pageSize);
+  const cmpBigint = (x: bigint, y: bigint) => (x < y ? -1 : x > y ? 1 : 0);
+  const { sorted, sortKey, sortDir, toggle } = useTableSort(rows, "date", {
+    date: (a, b) => a.ts - b.ts,
+    side: (a, b) => (a.side === b.side ? 0 : a.side === "buy" ? -1 : 1),
+    eth: (a, b) => cmpBigint(a.ethAmount, b.ethAmount),
+    token: (a, b) => cmpBigint(a.tokenAmount, b.tokenAmount),
+    trader: (a, b) => (a.origin ?? "").localeCompare(b.origin ?? ""),
+  });
+
+  const visible = usePagedSlice(sorted, page, pageSize);
 
   if (isLoading) {
     return (
@@ -126,13 +136,13 @@ export function PaginatedSwapsTable() {
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
+          <thead className="text-xs text-muted-foreground border-b border-border">
             <tr>
-              <th className="text-left py-3 px-4 font-medium">Date</th>
-              <th className="text-left py-3 px-4 font-medium">Side</th>
-              <th className="text-right py-3 px-4 font-medium">ETH</th>
-              <th className="text-right py-3 px-4 font-medium">LINEADAT</th>
-              <th className="text-left py-3 px-4 font-medium">Trader</th>
+              <SortHeader field="date" active={sortKey} dir={sortDir} onClick={toggle}>Date</SortHeader>
+              <SortHeader field="side" active={sortKey} dir={sortDir} onClick={toggle}>Side</SortHeader>
+              <SortHeader field="eth" active={sortKey} dir={sortDir} onClick={toggle} align="right">ETH</SortHeader>
+              <SortHeader field="token" active={sortKey} dir={sortDir} onClick={toggle} align="right">LINEADAT</SortHeader>
+              <SortHeader field="trader" active={sortKey} dir={sortDir} onClick={toggle}>Trader</SortHeader>
               <th className="text-right py-3 px-4 font-medium"></th>
             </tr>
           </thead>
@@ -164,7 +174,7 @@ export function PaginatedSwapsTable() {
                       {shortAddress(r.origin)}
                     </a>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-muted-foreground">-</span>
                   )}
                 </td>
                 <td className="py-3 px-4 text-right">
@@ -203,7 +213,7 @@ export function PaginatedSwapsTable() {
               {formatEth(r.ethAmount)} ETH {r.side === "buy" ? "→" : "←"} {formatTokens(r.tokenAmount)} LINEADAT
             </div>
             <div className="text-xs text-muted-foreground font-mono">
-              {r.origin ? shortAddress(r.origin) : "—"}
+              {r.origin ? shortAddress(r.origin) : "-"}
             </div>
           </li>
         ))}

@@ -1,11 +1,11 @@
 /**
- * Server-safe wagmi constants — pure data + helpers, no client-side functions.
+ * Server-safe wagmi constants - pure data + helpers, no client-side functions.
  * The wagmi `config` object lives in `wagmi-client.ts` (client-only) so that server pages
  * importing ADDR / txUrl / etc don't accidentally pull `getDefaultConfig` into the server bundle.
  */
 
 /**
- * Default chain for Phase 3 — Base Sepolia (84532). Phase 4 will switch to Linea (59144).
+ * Default chain for Phase 3 - Base Sepolia (84532). Phase 4 will switch to Linea (59144).
  */
 export const DEFAULT_CHAIN_ID = parseInt(
   process.env.NEXT_PUBLIC_CHAIN_ID || "84532",
@@ -13,13 +13,20 @@ export const DEFAULT_CHAIN_ID = parseInt(
 );
 
 /**
- * Strategy deploy block — lower bound for full-history event reads (used by
+ * Underlying-asset ticker shown in the UI. Linea mainnet = canonical $LINEA;
+ * Base Sepolia testnet = mock tLINEA. Drives every user-facing token label so the
+ * whole app reads "LINEA" on mainnet without per-component hardcodes.
+ */
+export const UNDERLYING_SYMBOL = DEFAULT_CHAIN_ID === 59144 ? "LINEA" : "tLINEA";
+
+/**
+ * Strategy deploy block - lower bound for full-history event reads (used by
  * the future Ponder indexer wiring; rolling-window queries don't read this).
  * Defaults to the LineaDAT Phase 3.5 launch block on Base Sepolia (with launch
  * gate; previous values from the legacy LINEASTR deploy and the gate-less
  * LineaDAT deploy are now zombies).
  * Override via NEXT_PUBLIC_DEPLOY_BLOCK after each redeploy. NEVER 0n in
- * production — a 0n value triggers a 41M-block scan and 4500+ parallel RPC
+ * production - a 0n value triggers a 41M-block scan and 4500+ parallel RPC
  * chunk requests.
  */
 export const DEPLOY_BLOCK: bigint = process.env.NEXT_PUBLIC_DEPLOY_BLOCK
@@ -44,6 +51,7 @@ const FALLBACK_STRATEGY = "0x615937AE1eB71248DA407F39AcFea9288CF1784F";
 const FALLBACK_BOT      = "0x8FC3c32fd69D714413C1ecD66FA4067b08eE3532";
 const FALLBACK_HOOK     = "0x512dd6871eb3a28aD07885A9B75a2e26eDa2a444";
 const FALLBACK_SWAPPER  = "0x1e4B059b392a8eCee33bCf2D7463D2F201835F91";
+const FALLBACK_FAUCET   = "0x50910c9cA9262051f3697Ab09450773287516c6E";
 
 function addressOrFallback(envVar: string | undefined, fallback: string): `0x${string}` {
   if (!envVar || !envVar.startsWith("0x") || envVar.length !== 42) {
@@ -59,6 +67,7 @@ export const ADDR = {
   bot:      addressOrFallback(process.env.NEXT_PUBLIC_BOT_ADDRESS,      FALLBACK_BOT),
   hook:     addressOrFallback(process.env.NEXT_PUBLIC_HOOK_ADDRESS,     FALLBACK_HOOK),
   swapper:  addressOrFallback(process.env.NEXT_PUBLIC_SWAPPER_ADDRESS,  FALLBACK_SWAPPER),
+  faucet:   addressOrFallback(process.env.NEXT_PUBLIC_FAUCET_ADDRESS,   FALLBACK_FAUCET),
 } as const;
 
 /// LineaDAT Uniswap v4 pool key (currency0=ETH, currency1=LineaDAT strategy token, dynamic fee).

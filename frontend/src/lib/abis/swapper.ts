@@ -1,5 +1,5 @@
 /**
- * LineastrTestSwapper ABI — Phase 3.5 testnet helper for Buy/Sell LINEASTR via PoolManager.unlock.
+ * LineastrTestSwapper ABI - Phase 3.5 testnet helper for Buy/Sell LINEASTR via PoolManager.unlock.
  * Production frontend will use UniversalRouter with V4_SWAP commands instead.
  */
 export const hookAbi = [

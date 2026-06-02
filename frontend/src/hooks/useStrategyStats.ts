@@ -32,7 +32,7 @@ export function useStrategyStats() {
       { address: ADDR.tLINEA, abi: erc20Abi, functionName: "balanceOf", args: [ADDR.strategy] },
       // Burn counter: LINEASTR balance held by 0x...dEaD (TWAP burns + future strategy buy-and-burn)
       { address: ADDR.strategy, abi: strategyAbi, functionName: "balanceOf", args: ["0x000000000000000000000000000000000000dEaD"] },
-      // Pool slot0 — packs sqrtPriceX96 (low 160 bits) + tick + protocolFee + lpFee.
+      // Pool slot0 - packs sqrtPriceX96 (low 160 bits) + tick + protocolFee + lpFee.
       { address: POOL_MANAGER_ADDR, abi: poolManagerAbi, functionName: "extsload", args: [POOL_SLOT0] },
     ],
     query: {

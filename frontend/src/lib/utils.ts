@@ -2,17 +2,17 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { PublicClient } from "viem";
 
-// Re-export of viem's getContractEvents return shape for one event — components
+// Re-export of viem's getContractEvents return shape for one event - components
 // import GetContractEventsReturnType<TAbi, TEventName> directly from viem when
 // they need precise typing on chunked event reads.
 
 /**
  * Fetch contract events across a wide block range by splitting into chunks.
- * Public RPCs cap eth_getLogs at 1k–10k blocks; we hit them in parallel and merge.
+ * Public RPCs cap eth_getLogs at 1k-10k blocks; we hit them in parallel and merge.
  * Failed chunks are silently dropped so a single transient error doesn't blank the table.
  *
  * Caller-provided generic R is the row shape returned by viem's typed getContractEvents
- * for the specific abi/eventName combination — pass it explicitly at the call site.
+ * for the specific abi/eventName combination - pass it explicitly at the call site.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getEventsChunked<R = any>(
@@ -44,7 +44,7 @@ export async function getEventsChunked<R = any>(
 }
 
 /**
- * Tailwind class merger — combines clsx for conditional logic with tailwind-merge for conflict resolution.
+ * Tailwind class merger - combines clsx for conditional logic with tailwind-merge for conflict resolution.
  * Standard shadcn/ui utility used by every component.
  */
 export function cn(...inputs: ClassValue[]) {
@@ -69,7 +69,7 @@ export function shortAddress(addr: string | undefined, chars = 4): string {
  * the default precision of 4 truncates the leading zeros.
  */
 export function formatEth(wei: bigint | undefined, decimals = 4): string {
-  if (wei === undefined) return "—";
+  if (wei === undefined) return "-";
   const eth = Number(wei) / 1e18;
   if (eth === 0) return "0";
   const minRepresentable = 10 ** -decimals;
@@ -81,10 +81,10 @@ export function formatEth(wei: bigint | undefined, decimals = 4): string {
 }
 
 /**
- * Format a tLINEA / LINEA value (also 18 decimals) — alias of formatEth with default 0 decimals.
+ * Format a tLINEA / LINEA value (also 18 decimals) - alias of formatEth with default 0 decimals.
  */
 export function formatTokens(wei: bigint | undefined, decimals = 0): string {
-  if (wei === undefined) return "—";
+  if (wei === undefined) return "-";
   const tokens = Number(wei) / 1e18;
   return tokens.toLocaleString("en-US", {
     minimumFractionDigits: 0,
@@ -131,7 +131,7 @@ export function lineastrPriceInEth(sqrt: bigint | undefined): number {
 
 /** Date formatter matching the reference layout: M/D/YYYY - HH:MM AM/PM */
 export function formatTradeDate(unixSec: number): string {
-  if (!unixSec) return "—";
+  if (!unixSec) return "-";
   const d = new Date(unixSec * 1000);
   const date = d.toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" });
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });

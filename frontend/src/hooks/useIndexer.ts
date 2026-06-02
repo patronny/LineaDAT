@@ -15,7 +15,6 @@ export function useBags(): State<BagRow> {
 
   useEffect(() => {
     let cancelled = false;
-    const ctrl = new AbortController();
     let interval: ReturnType<typeof setInterval> | null = null;
 
     async function load() {
@@ -29,14 +28,14 @@ export function useBags(): State<BagRow> {
           return;
         }
         if (!cancelled) setUsable(true);
-        const rows = await fetchBags(ctrl.signal);
+        const rows = await fetchBags();
         if (!cancelled) {
           setData(rows);
           setError(null);
           setLoading(false);
         }
       } catch (e) {
-        if (!cancelled && !ctrl.signal.aborted) {
+        if (!cancelled) {
           setError(e instanceof Error ? e : new Error(String(e)));
           setLoading(false);
         }
@@ -47,7 +46,6 @@ export function useBags(): State<BagRow> {
     if (INDEXER_ENABLED) interval = setInterval(load, REFETCH_MS);
     return () => {
       cancelled = true;
-      ctrl.abort();
       if (interval) clearInterval(interval);
     };
   }, []);
@@ -63,7 +61,6 @@ export function useSwaps(limit = 200): State<SwapRow> {
 
   useEffect(() => {
     let cancelled = false;
-    const ctrl = new AbortController();
     let interval: ReturnType<typeof setInterval> | null = null;
 
     async function load() {
@@ -77,14 +74,14 @@ export function useSwaps(limit = 200): State<SwapRow> {
           return;
         }
         if (!cancelled) setUsable(true);
-        const rows = await fetchSwaps(limit, ctrl.signal);
+        const rows = await fetchSwaps(limit);
         if (!cancelled) {
           setData(rows);
           setError(null);
           setLoading(false);
         }
       } catch (e) {
-        if (!cancelled && !ctrl.signal.aborted) {
+        if (!cancelled) {
           setError(e instanceof Error ? e : new Error(String(e)));
           setLoading(false);
         }
@@ -95,7 +92,6 @@ export function useSwaps(limit = 200): State<SwapRow> {
     if (INDEXER_ENABLED) interval = setInterval(load, REFETCH_MS);
     return () => {
       cancelled = true;
-      ctrl.abort();
       if (interval) clearInterval(interval);
     };
   }, [limit]);
