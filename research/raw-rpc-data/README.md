@@ -7,7 +7,7 @@
 | Файл | Источник | Что внутри |
 |---|---|---|
 | `wbtcstr-launch-receipt.json` | `eth_getTransactionReceipt(0xd444a9db...)` через `https://eth.drpc.org` | 12 logs запуска WBTCSTR (Mint, Initialize, ModifyLiquidity, PositionManager LP-NFT mint→0xdead, StrategyDeployed) |
-| `wbtcstr-launch-calltrace.json` | `debug_traceTransaction({tracer: callTracer})` | Полное дерево вызовов launch tx — показывает что 1.0 ETH → 0.8 ops + 0.2 feeAddress, **0 ETH в PoolManager** ⇒ single-sided seed |
+| `wbtcstr-launch-calltrace.json` | `debug_traceTransaction({tracer: callTracer})` | Полное дерево вызовов launch tx - показывает что 1.0 ETH → 0.8 ops + 0.2 feeAddress, **0 ETH в PoolManager** ⇒ single-sided seed |
 
 ### Ключевые факты, доказанные этими данными
 
@@ -32,7 +32,7 @@ done
 # key = keccak256(abi.encode(WBTCSTR_addr, 1))
 # Python: from eth_hash.auto import keccak; keccak(bytes.fromhex("..."*) + (1).to_bytes(32,"big")).hex()
 
-# 3. $LINEA pools on Linea — GeckoTerminal:
+# 3. $LINEA pools on Linea - GeckoTerminal:
 curl https://api.geckoterminal.com/api/v2/networks/linea/tokens/0x1789e0043623282D5DCc7F213d703C6D8BAfBB04/pools
 
 # 4. ETH/LINEA prices через DefiLlama:
