@@ -1,6 +1,6 @@
-# 10. REKTSTR — Анатомия ERC20Strategy v2
+# 10. REKTSTR - Анатомия ERC20Strategy v2
 
-Глубокий разбор первой ERC-20 стратегии TokenWorks. REKTSTR (RektStrategy) — на 1 месяц старше WBTCSTR, на 1 поколение хука раньше (`VERSION = 2`). Включён в research как *более старый референс*: исходники verified, паттерны те же, мелкие отличия видим явно.
+Глубокий разбор первой ERC-20 стратегии TokenWorks. REKTSTR (RektStrategy) - на 1 месяц старше WBTCSTR, на 1 поколение хука раньше (`VERSION = 2`). Включён в research как *более старый референс*: исходники verified, паттерны те же, мелкие отличия видим явно.
 
 Все факты ниже подтверждены прямым чтением через `https://ethereum-rpc.publicnode.com` и `https://eth.drpc.org` (2026-05-01) + verified исходниками с Sourcify.
 
@@ -12,7 +12,7 @@
 | **ERC20Strategy v2 implementation** | `0xe5a9634bf5db3d8d6138c3182d09a561bcf1a2a5` | `eth_call(getImplementation())` |
 | **Hook (REKTSTR-specific)** | `0xdadaaa9591d6f4d68748898fbacc99dc69012444` | proxy slot 3 |
 | **Factory** | `0x9f834e16b709c0781537186e7bb09de42a000a0a` | общий с WBTCSTR |
-| **Underlying ($REKT)** | `0xdd3b11ef34cd511a2da159034a05fcb94d806686` | `eth_call(token())` — Rektguy сообщество ERC-20 |
+| **Underlying ($REKT)** | `0xdd3b11ef34cd511a2da159034a05fcb94d806686` | `eth_call(token())` - Rektguy сообщество ERC-20 |
 | **Owner (Adam Lizek)** | `0x019817ad02a31b990433542097be29d97613e8cb` | `eth_call(owner())`, **НЕ renounced** на 01.05.2026 |
 | **Uniswap v4 PoolManager** | `0x000000000004444c5dc75cb358380d2e3de08a90` | canonical |
 | **Universal Router (V4Router04)** | `0x00000000000044a361ae3cac094c9d1b14eece97` | immutable arg в proxy |
@@ -24,7 +24,7 @@
 | **Launch block** | **24 000 001** (bisect через `eth_getCode`: до этого блока кода не было) |
 | **Timestamp** | `1765584383` = **2025-12-13T00:06:23Z** |
 | **VERSION()** | **2** ⚠️ (на поколение раньше WBTCSTR) |
-| **Compiler** | Solidity 0.8.26 (отличие от v3 — там 0.8.30) |
+| **Compiler** | Solidity 0.8.26 (отличие от v3 - там 0.8.30) |
 
 ## 3. Tokenomics
 
@@ -44,7 +44,7 @@
 | `lastBuyBlock` | 24 942 099 | proxy slot 10 |
 | `lastTwapBlock` | 24 395 059 | proxy slot 9 |
 
-## 4. Storage layout (proxy slots) — идентичен v3
+## 4. Storage layout (proxy slots) - идентичен v3
 
 | Slot | Поле | Декод |
 |---|---|---|
@@ -59,7 +59,7 @@
 | 8 | `twapDelayInBlocks` | 1 |
 | 9 | `lastTwapBlock` | 24 395 059 |
 | 10 | `lastBuyBlock` | 24 942 099 |
-| 11 | `isDistributor` mapping head | — |
+| 11 | `isDistributor` mapping head | - |
 | 12 | `globalDistributor` | 0 (mainnet uses константу `GLOBAL_DISTRIBUTION_HANDLER`) |
 
 ## 5. Verified исходники
@@ -77,9 +77,9 @@ lib/v4-router/lib/permit2/...        (Permit2)
 metadata.json                        Foundry compilation metadata
 ```
 
-В Sourcify нет hook-сурсов (`0xdadaaa95…12444` не индексирован) — будем дорезать через Etherscan API при детальном compare между v2 и v3 hook (для v2 vs v3 hook сравнения нужно явно знать, какие фиксы между ними были).
+В Sourcify нет hook-сурсов (`0xdadaaa95…12444` не индексирован) - будем дорезать через Etherscan API при детальном compare между v2 и v3 hook (для v2 vs v3 hook сравнения нужно явно знать, какие фиксы между ними были).
 
-## 6. v2 vs v3 — известные отличия
+## 6. v2 vs v3 - известные отличия
 
 Я провёл diff между [`research/rektstr-v2/src__strategies__ERC20Strategy.sol`](../research/rektstr-v2/src__strategies__ERC20Strategy.sol) (v2) и [`research/tokenworks-sources/ERC20Strategy.sol`](../research/tokenworks-sources/ERC20Strategy.sol) (v3). Размеры: v2 = 14 249 байт, v3 = 14 960 байт. Дельта = +711 байт.
 
@@ -88,25 +88,25 @@ metadata.json                        Foundry compilation metadata
 - **Минорные фиксы балансных проверок** (точные строки вычислю при написании контрактов)
 - Базовая семантика P2P-оффера и `availableFunds() = min(currentFees, getMaxPriceForBuy())` **не менялась**
 
-`BaseStrategy.sol` дельта: v2 = 25 596 байт, v3 = 26 582 байт. Тоже мелкие правки. Главное — **storage layout идентичен**, оба используют `__gap[49]` для UUPS-апгрейдов.
+`BaseStrategy.sol` дельта: v2 = 25 596 байт, v3 = 26 582 байт. Тоже мелкие правки. Главное - **storage layout идентичен**, оба используют `__gap[49]` для UUPS-апгрейдов.
 
 ## 7. Hook permissions (для REKTSTR v2)
 
-Адрес хука `0xdadaaa9591d6f4d68748898fbacc99dc69012444`. Младшие 14 бит = `0x2444` = `beforeInitialize | afterAddLiquidity | afterSwap | afterSwapReturnDelta` — **те же что в v3**. CREATE2-mined под точно те же permission flags.
+Адрес хука `0xdadaaa9591d6f4d68748898fbacc99dc69012444`. Младшие 14 бит = `0x2444` = `beforeInitialize | afterAddLiquidity | afterSwap | afterSwapReturnDelta` - **те же что в v3**. CREATE2-mined под точно те же permission flags.
 
-Это значит — между v2 и v3 hook-permissions **не менялись**. Дельта только во внутренней логике хука (которую без сурсов v2-hook сейчас не сравним).
+Это значит - между v2 и v3 hook-permissions **не менялись**. Дельта только во внутренней логике хука (которую без сурсов v2-hook сейчас не сравним).
 
 ## 8. На что смотрим как на референс для LineaDAT
 
-✅ **Storage layout** — копируем 1:1 (это интерфейс с RPC и indexer'ами, любые отклонения сломают frontend).
-✅ **`buyIncrement = 0.1 ETH/блок`** — TokenWorks нашли это эмпирически, v2 уже использует. Подтверждение что 0.1 ETH/блок — норма для mainnet (12с/блок). Для Linea (3с/блок) пересчитываем: см. [`docs/50-lineadat-spec.md`](50-lineadat-spec.md).
-✅ **`priceMultiplier = 1200`** — закреплено в v2 и v3, копируем.
-✅ **`twapIncrement = 1.0 ETH` / `twapDelayInBlocks = 1`** — на mainnet норма; для Linea с тонким пулом снижаем (см. spec).
-✅ **`bagSize`** — у REKTSTR это 42 069 000 000 REKT (мем-число). Это даёт нам подтверждение, что bagSize **может быть произвольным круглым** числом — не привязано к % от supply underlying. Для LineaDAT выбрали **150 000 LINEA** как «удобное круглое».
+✅ **Storage layout** - копируем 1:1 (это интерфейс с RPC и indexer'ами, любые отклонения сломают frontend).
+✅ **`buyIncrement = 0.1 ETH/блок`** - TokenWorks нашли это эмпирически, v2 уже использует. Подтверждение что 0.1 ETH/блок - норма для mainnet (12с/блок). Для Linea (3с/блок) пересчитываем: см. [`docs/50-lineadat-spec.md`](50-lineadat-spec.md).
+✅ **`priceMultiplier = 1200`** - закреплено в v2 и v3, копируем.
+✅ **`twapIncrement = 1.0 ETH` / `twapDelayInBlocks = 1`** - на mainnet норма; для Linea с тонким пулом снижаем (см. spec).
+✅ **`bagSize`** - у REKTSTR это 42 069 000 000 REKT (мем-число). Это даёт нам подтверждение, что bagSize **может быть произвольным круглым** числом - не привязано к % от supply underlying. Для LineaDAT выбрали **150 000 LINEA** как «удобное круглое».
 
 ## 9. Что забираем как "v2 был баги-первенец, v3 уже почистили"
 
-REKTSTR — **первый ERC-20 strategy** TokenWorks. На нём могли быть обкатаны фиксы для v3. Конкретные публично известные баги REKTSTR — не зафиксированы в открытых каналах (см. [`30-tokenworks-incidents.md`](30-tokenworks-incidents.md)), но факт что v3 деплоился через **месяц** после v2 говорит, что было что-то правлено. **LineaDAT форкаем именно v3** — берём пост-фикс версию.
+REKTSTR - **первый ERC-20 strategy** TokenWorks. На нём могли быть обкатаны фиксы для v3. Конкретные публично известные баги REKTSTR - не зафиксированы в открытых каналах (см. [`30-tokenworks-incidents.md`](30-tokenworks-incidents.md)), но факт что v3 деплоился через **месяц** после v2 говорит, что было что-то правлено. **LineaDAT форкаем именно v3** - берём пост-фикс версию.
 
 ## 10. Etherscan / Sourcify ссылки
 

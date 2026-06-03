@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {BaseTest} from "./Base.t.sol";
 import {BaseStrategy} from "../src/BaseStrategy.sol";
 
-/// @notice Tests for processTokenTwap (buy-and-burn LineaDAT via TWAP) — but since our pool isn't initialized
+/// @notice Tests for processTokenTwap (buy-and-burn LineaDAT via TWAP) - but since our pool isn't initialized
 /// in unit tests, we only test guards, not the actual swap. Real swap tested in SimulateCycles on Anvil fork.
 contract SandwichTest is BaseTest {
     /// @notice Helper: pre-load ethToTwap by simulating a sellTokens cycle
@@ -34,14 +34,14 @@ contract SandwichTest is BaseTest {
         // First call works (assuming lastTwapBlock = 0 from init, current_block >= 0 + 4 always holds)
         // To force failure: do first twap, then attempt second within 4 blocks.
 
-        // Need to mock the swap because pool isn't initialized — wrap try/catch:
+        // Need to mock the swap because pool isn't initialized - wrap try/catch:
         try strategy.processTokenTwap() {
-            // First call succeeded — now try second too quickly
+            // First call succeeded - now try second too quickly
             vm.roll(block.number + 1);
             vm.expectRevert(BaseStrategy.TwapDelayNotMet.selector);
             strategy.processTokenTwap();
         } catch {
-            // First call failed (likely due to mock pool manager not handling swap call) — that's expected here.
+            // First call failed (likely due to mock pool manager not handling swap call) - that's expected here.
             // We've at least verified that ethToTwap > 0 doesn't trip NoETHToTwap on first call.
             assertGt(strategy.ethToTwap(), 0);
         }

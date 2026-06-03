@@ -11,7 +11,7 @@ import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 
-/// @notice Phase 3.5 — Market simulator. One swap per script invocation; cron paces the cadence.
+/// @notice Phase 3.5 - Market simulator. One swap per script invocation; cron paces the cadence.
 ///
 /// CHOICE LOGIC (deterministic from block + run_id env):
 ///   - 70% buy (ETH -> LineaDAT), 30% sell (LineaDAT -> ETH)

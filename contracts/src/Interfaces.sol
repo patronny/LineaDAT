@@ -36,7 +36,7 @@ interface IValidRouter {
     function msgSender() external view returns (address);
 }
 
-/// @notice Common strategy interface — shared between LineaDAT and any future LineaDAT-family strategies on Linea.
+/// @notice Common strategy interface - shared between LineaDAT and any future LineaDAT-family strategies on Linea.
 ///         Base contract `BaseStrategy` implements all of this. Hook calls these via `IStrategy(collection).fn(...)`.
 interface IStrategy {
     function factory() external view returns (address);
@@ -79,7 +79,7 @@ interface IBaseStrategyFactory {
     function updateLauncher(address _launcher, bool _authorized) external;
 }
 
-/// @notice LineaDAT factory interface — extends `IBaseStrategyFactory` with strategy-token mapping.
+/// @notice LineaDAT factory interface - extends `IBaseStrategyFactory` with strategy-token mapping.
 interface ILineaDATFactory is IBaseStrategyFactory {
     /// @notice Map underlying ERC-20 token => deployed strategy proxy
     function tokenToStrategy(address token) external view returns (address);

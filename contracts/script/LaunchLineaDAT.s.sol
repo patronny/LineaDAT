@@ -64,9 +64,17 @@ contract LaunchLineaDAT is Script {
         address deployer = vm.addr(vm.envUint("PRIVATE_KEY"));
         uint64 currentNonce = vm.getNonce(deployer);
 
+        // FEE_ADDRESS = recipient of full 20% creator share on the LineaDAT self-launch.
+        //   - feeds hook.feeAddress (10% LineaDAT-burn redirect; constructor arg)
+        //   - feeds hook.feeAddressClaimedByOwner[proxy] (10% creator share; admin call post-deploy)
+        // On testnet env is unset -> defaults to deployer EOA (one wallet collects both streams).
+        // On mainnet pass FEE_ADDRESS=0x6e0d01089976093680c881CcDcB79e0D046e2433 to route to creator.
+        address creatorFeeAddr = vm.envOr("FEE_ADDRESS", deployer);
+
         console.log("=== Atomic LineaDAT Phase 3.5 Launch ===");
         console.log("Deployer:        ", deployer);
         console.log("Deployer nonce:  ", currentNonce);
+        console.log("Creator fee addr:", creatorFeeAddr);
 
         /* === Pre-compute deterministic addresses === */
         // Broadcast order from deployer EOA:
@@ -85,7 +93,7 @@ contract LaunchLineaDAT is Script {
         /* === Mine hook salt against pre-computed proxy === */
         bytes memory hookInitCode = abi.encodePacked(
             type(LineaDATHook).creationCode,
-            abi.encode(IPoolManager(POOL_MANAGER), futureProxy, ILineaDATFactory(futureFactory), deployer)
+            abi.encode(IPoolManager(POOL_MANAGER), futureProxy, ILineaDATFactory(futureFactory), creatorFeeAddr)
         );
         bytes32 codeHash = keccak256(hookInitCode);
 
@@ -158,6 +166,13 @@ contract LaunchLineaDAT is Script {
         strategy.setTwapIncrement(TWAP_INCREMENT);
         strategy.setTwapDelayInBlocks(TWAP_DELAY_BLOCKS);
         console.log("[6] TWAP configured: increment=0.05 ETH, delay=4 blocks");
+
+        // 6b. Claim 10% creator share via feeAddressClaimedByOwner[proxy]. Without this step the
+        //     ownerAmount silently merges into treasury (see docs/50-lineadat-spec.md sec 3).
+        //     Combined with hook.feeAddress (set in constructor, 10% LineaDAT-burn redirect on
+        //     self-launch) this gives the spec-required 80/20 split = 2% of swap volume to creator.
+        LineaDATHook(payable(hookAddr)).adminUpdateFeeAddress(proxyAddr, creatorFeeAddr);
+        console.log("[6b] feeAddressClaimedByOwner[proxy] -> ", creatorFeeAddr);
 
         // 7. Deploy seeder
         LineaDATSeeder seeder = new LineaDATSeeder(IPoolManager(POOL_MANAGER));

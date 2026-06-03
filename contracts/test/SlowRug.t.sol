@@ -6,7 +6,7 @@ import {BaseTest} from "./Base.t.sol";
 /// @notice Slow-rug attack vector: a lone bot waits for `currentFees` to grow large, then ramps
 ///         `getMaxPriceForBuy` over many blocks until potential bot profit (= currentFees - marketPrice(bagSize))
 ///         exceeds rational arbitrage thresholds. We verify here that:
-///         (a) availableFunds is bounded by `min(currentFees, getMaxPriceForBuy)` — never exceeds either
+///         (a) availableFunds is bounded by `min(currentFees, getMaxPriceForBuy)` - never exceeds either
 ///         (b) lastBuyBlock resets on every buyTokens, preventing the ceiling from staying high
 ///         (c) buyIncrement = 0.02 ETH/block on Linea makes catch-up to bagSize=0.236 ETH happen in ~12 blocks (~36s)
 contract SlowRugTest is BaseTest {
@@ -50,7 +50,7 @@ contract SlowRugTest is BaseTest {
         vm.prank(botA);
         strategy.buyTokens();
 
-        // Right after — getMaxPriceForBuy = 1 * 0.02 = 0.02 ETH (ceiling reset)
+        // Right after - getMaxPriceForBuy = 1 * 0.02 = 0.02 ETH (ceiling reset)
         assertEq(strategy.getMaxPriceForBuy(), 0.02 ether);
         // availableFunds = min(currentFees, getMaxPriceForBuy). After full draw, currentFees = 0,
         // so availableFunds = 0 (the harder bound).

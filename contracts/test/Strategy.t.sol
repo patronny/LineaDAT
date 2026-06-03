@@ -67,7 +67,7 @@ contract StrategyTest is BaseTest {
     }
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
-    /*                  buyTokens — BAG CYCLE              */
+    /*                  buyTokens - BAG CYCLE              */
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
 
     function test_buyTokens_revertsOnZeroFees() public {
@@ -148,7 +148,7 @@ contract StrategyTest is BaseTest {
     }
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
-    /*               sellTokens — BUY-BACK BAG             */
+    /*               sellTokens - BUY-BACK BAG             */
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
 
     function test_sellTokens_succeedsWithExactPrice() public {
@@ -270,16 +270,22 @@ contract StrategyTest is BaseTest {
         assertEq(strategy.bagSize(), 200_000 * 1e18);
     }
 
-    function test_updateBagSize_revertsAfterFirstBuy() public {
+    function test_updateBagSize_succeedsAfterFirstBuy() public {
+        // LineaDAT divergence from TokenWorks v3: bagSize can be retuned at any time
+        // (v3 froze it permanently after the first buy via TokensAlreadyPurchased).
+        // Rationale: $LINEA volatility on L2 makes a frozen bagSize a long-term liability.
         _addFees(0.5 ether);
         _approveLINEA(botA, BAG_SIZE);
         vm.roll(block.number + 30);
         vm.prank(botA);
         strategy.buyTokens();
+        assertEq(strategy.lastBagId(), 1);
 
         vm.prank(owner);
-        vm.expectRevert(LineaDATStrategy.TokensAlreadyPurchased.selector);
         strategy.updateBagSize(200_000 * 1e18);
+        assertEq(strategy.bagSize(), 200_000 * 1e18);
+        // lastBuyBlock reset preserves v3 max-price-ramp behavior
+        assertEq(strategy.lastBuyBlock(), block.number);
     }
 
     function test_updateBagSize_revertsOnZero() public {

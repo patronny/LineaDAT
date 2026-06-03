@@ -1,6 +1,6 @@
 name: LineaDAT Market Simulator
 
-# Phase 3.5 — generates random ETH<->LINEADAT swaps to drive real hook fees into strategy.
+# Phase 3.5 - generates random ETH<->LINEADAT swaps to drive real hook fees into strategy.
 # Each scheduled run executes one buy or sell via LineaDATTestSwapper.
 #
 # NOTE on launch gate: pre-launch (block.timestamp < hook.deploymentTime[strategy]) every
@@ -12,7 +12,7 @@ name: LineaDAT Market Simulator
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 min (144 rounds per 24h) — compressed test cadence
+    - cron: "*/10 * * * *"   # every 10 min (144 rounds per 24h) - compressed test cadence
   workflow_dispatch:
     inputs:
       action:

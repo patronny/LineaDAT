@@ -98,8 +98,8 @@ contract LineaDATStrategy is BaseStrategy {
     error NoZeroBuys();
     /// @notice triggered when there is an error in inputs
     error InputsError();
-    /// @notice triggered when updating bagSize after tokens have been purchased
-    error TokensAlreadyPurchased();
+    /// @notice unlockCallback called by something other than the PoolManager
+    error NotPoolManager();
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
     /*                    CONSTRUCTOR                      */
@@ -193,7 +193,7 @@ contract LineaDATStrategy is BaseStrategy {
 
     /// @notice PoolManager unlock callback for processTokenTwap. NOT for general use.
     function unlockCallback(bytes calldata raw) external returns (bytes memory) {
-        if (msg.sender != address(poolManager())) revert OnlyHook(); // re-using existing error
+        if (msg.sender != address(poolManager())) revert NotPoolManager();
         uint256 burnAmount = abi.decode(raw, (uint256));
 
         PoolKey memory key = PoolKey({
@@ -218,7 +218,7 @@ contract LineaDATStrategy is BaseStrategy {
         if (amount0 < 0) {
             poolManager().settle{value: uint256(uint128(-amount0))}();
         }
-        // Take LineaDAT straight to dead address — burns supply
+        // Take LineaDAT straight to dead address - burns supply
         if (amount1 > 0) {
             poolManager().take(key.currency1, DEAD_ADDRESS, uint256(uint128(amount1)));
         }
@@ -297,10 +297,14 @@ contract LineaDATStrategy is BaseStrategy {
 
     /// @notice Update the bag size
     /// @param newBagSize The new bag size to set
+    /// @dev LineaDAT divergence from TokenWorks v3: v3 reverts with TokensAlreadyPurchased once
+    ///      lastBagId != 0, freezing bagSize permanently after the first buy. With $LINEA being a
+    ///      volatile L2 token, a frozen bagSize becomes too thick (price up) or too thin (price
+    ///      down) for the bot and frontend Sell flow. We allow the owner to retune at any time;
+    ///      the only protected invariant is that newBagSize > 0. lastBuyBlock reset preserves
+    ///      v3 behavior (resets the getMaxPriceForBuy ramp so accrual restarts cleanly).
     function updateBagSize(uint256 newBagSize) external onlyOwner {
         if (newBagSize == 0) revert InputsError();
-        // bagId must be 0 when updating bag size
-        if (lastBagId != 0) revert TokensAlreadyPurchased();
         bagSize = newBagSize;
 
         // Update last buy block to reset max price calculation

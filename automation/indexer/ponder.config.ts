@@ -2,41 +2,59 @@ import { createConfig } from "ponder";
 import { strategyAbi } from "./abis/strategy";
 import { hookAbi } from "./abis/hook";
 
-// Defaults reflect the LIVE Phase 3 Base Sepolia deployment (2026-05-03).
-// Override on Fly via `fly secrets set --app lineastr-indexer STRATEGY_ADDRESS=…`
-// after any redeploy. Phase 4 mainnet should set both via secrets, not edit here.
+// Chain-switchable via env so ONE config serves both the live Base Sepolia testnet
+// (lineastr-indexer) and the Linea mainnet rehearsal/launch (lineadat-indexer).
+// Defaults = Base Sepolia 84532, so the live testnet indexer is unaffected when no env is set.
+//   Testnet (default): no env needed.
+//   Linea mainnet:     CHAIN_ID=59144 PONDER_RPC_URL_59144=<infura> STRATEGY_ADDRESS=... HOOK_ADDRESS=... START_BLOCK=...
+const CHAIN_ID = process.env.CHAIN_ID ? Number(process.env.CHAIN_ID) : 84532;
+const CHAIN_NAME =
+  process.env.PONDER_CHAIN_NAME ?? (CHAIN_ID === 59144 ? "linea" : "baseSepolia");
+
+// Defaults reflect the canonical Phase 3.5 LineaDAT atomic-launch deployment
+// (Base Sepolia, 2026-05-05). Override on Fly via fly secrets after any redeploy / for mainnet.
 const STRATEGY = (process.env.STRATEGY_ADDRESS ??
-  "0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2") as `0x${string}`;
+  "0x615937AE1eB71248DA407F39AcFea9288CF1784F") as `0x${string}`;
 const HOOK = (process.env.HOOK_ADDRESS ??
-  "0x61116044DC8eB623A618021cEDB14836D6512444") as `0x${string}`;
+  "0x512dd6871eb3a28aD07885A9B75a2e26eDa2a444") as `0x${string}`;
 
 // Block at or before strategy proxy deployment. Indexer scans from here forward.
-// Override via START_BLOCK env on Fly. Conservative testnet default: 0 (full scan,
-// fine on Sepolia, do not deploy this default to mainnet).
+// Override via START_BLOCK env on Fly. Default: LineaDAT Phase 3.5 launch block (Base Sepolia).
 const START_BLOCK = process.env.START_BLOCK
   ? Number(process.env.START_BLOCK)
-  : 0;
+  : 41112701;
 
-// Phase 3: Base Sepolia (84532). Phase 4 will switch chain id and addresses.
+// RPC config supports a comma-separated fallback list to survive single-provider outages
+// (publicnode timed out for ~hours on 2026-05-08, blocking the indexer and the 24h Change widget).
+// Env var follows Ponder convention PONDER_RPC_URL_<chainId>. Testnet default keeps the free
+// fallback chain; Linea mainnet uses paid Infura set via fly secrets PONDER_RPC_URL_59144.
+const RPC_RAW =
+  process.env[`PONDER_RPC_URL_${CHAIN_ID}`] ??
+  (CHAIN_ID === 84532
+    ? "https://base-sepolia.drpc.org,https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com"
+    : "https://rpc.linea.build");
+const RPC_LIST = RPC_RAW.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const RPC = RPC_LIST.length > 1 ? RPC_LIST : RPC_LIST[0];
+
 export default createConfig({
   chains: {
-    baseSepolia: {
-      id: 84532,
-      rpc:
-        process.env.PONDER_RPC_URL_84532 ??
-        "https://base-sepolia-rpc.publicnode.com",
+    [CHAIN_NAME]: {
+      id: CHAIN_ID,
+      rpc: RPC,
     },
   },
   contracts: {
     LineaDATStrategy: {
       abi: strategyAbi,
-      chain: "baseSepolia",
+      chain: CHAIN_NAME,
       address: STRATEGY,
       startBlock: START_BLOCK,
     },
     LineaDATHook: {
       abi: hookAbi,
-      chain: "baseSepolia",
+      chain: CHAIN_NAME,
       address: HOOK,
       startBlock: START_BLOCK,
     },

@@ -1,8 +1,8 @@
-# 60. Deployment Runbook — пошаговый план запуска LineaDAT
+# 60. Deployment Runbook - пошаговый план запуска LineaDAT
 
 Полный план: написание контрактов → Anvil fork → Base Sepolia → Linea mainnet.
 
-## Phase 0 — подготовка (текущий этап, до написания кода)
+## Phase 0 - подготовка (текущий этап, до написания кода)
 
 - [x] Согласована [`50-lineadat-spec.md`](50-lineadat-spec.md) (1 мая 2026)
 - [x] Скачаны verified исходники прототипов: WBTCSTR v3, REKTSTR v2
@@ -10,7 +10,7 @@
 - [ ] **Ты:** покупаешь `on-chaindat.com` (already secured 2026-05-05) (за неделю до launch)
 - [ ] **Я:** генерирую Bot A и Bot B EOA приваты, передаю тебе через secure channel; ты держишь приваты у себя, я использую только для подписи в fly.io secrets
 
-## Phase 1 — контракты (Этап 2)
+## Phase 1 - контракты (Этап 2)
 
 ### 1.1 Setup repo
 
@@ -67,7 +67,7 @@ contracts/test/
 
 Цель: ≥ 100 тест-кейсов, всё зелёное.
 
-## Phase 2 — Anvil fork (локальный тест)
+## Phase 2 - Anvil fork (локальный тест)
 
 ### 2.1 Fork Linea mainnet
 
@@ -97,10 +97,10 @@ forge script contracts/script/SimulateCycles.s.sol \
 
 Скрипт:
 1. Делает random swap'ы (50/50 buy/sell в нашем pool) с разными размерами
-2. После каждого swap'а — `vm.roll(block.number + 5)` (jump 5 блоков)
+2. После каждого swap'а - `vm.roll(block.number + 5)` (jump 5 блоков)
 3. Эпизодически вызывает `buyTokens()` (от bot-EOA) когда `availableFunds() ≥ marketPrice`
 4. Эпизодически вызывает `sellTokens(bagId)` от random buyer
-5. Когда `ethToTwap > 0.05 ETH` — вызывает `processTokenTwap()`
+5. Когда `ethToTwap > 0.05 ETH` - вызывает `processTokenTwap()`
 6. Проверяет инварианты: `currentFees ≥ 0`, `ethToTwap ≥ 0`, `totalSupply` уменьшается, `treasury LINEA` растёт
 
 ### 2.4 Логирование
@@ -108,11 +108,11 @@ forge script contracts/script/SimulateCycles.s.sol \
 Все cycles в `out/anvil-simulation.json`. Анализ:
 - Avg profit бота за цикл: должен быть **> 0.03 ETH**
 - Slow-rug attempts (bot ждёт > 50 блоков и пытается забрать всё): должны fail / yield ограниченную премию
-- Burn-rate LineaDAT: 0.5–2% supply в неделю при $10k/день volume
+- Burn-rate LineaDAT: 0.5-2% supply в неделю при $10k/день volume
 
-## Phase 3 — Base Sepolia (публичный testnet, 7 дней)
+## Phase 3 - Base Sepolia (публичный testnet, 7 дней)
 
-### 3.1 Deploy (DONE — 2026-05-03)
+### 3.1 Deploy (DONE - 2026-05-03)
 
 Live testnet addresses (Base Sepolia, chainId 84532):
 
@@ -126,23 +126,23 @@ Live testnet addresses (Base Sepolia, chainId 84532):
 | Deployer / Owner / Keeper EOA | `0xbc6af64859dF1008c8187F94dF89323000dEE668` |
 | Deploy block | 41022811 |
 
-⚠️ Underlying на Base Sepolia — нет `$LINEA`. Используется **MockTLINEA** ERC-20 (faucet 100k/час, cap 100M).
+⚠️ Underlying на Base Sepolia - нет `$LINEA`. Используется **MockTLINEA** ERC-20 (faucet 100k/час, cap 100M).
 
 ### 3.2 Keeper deployment (GitHub Actions, NOT Fly)
 
-Phase 3 использует GitHub Actions cron, а не Fly bots — `automation/keeper/`,
+Phase 3 использует GitHub Actions cron, а не Fly bots - `automation/keeper/`,
 workflow `.github/workflows/keeper.yml`, schedule `*/120 * * * *` (каждые 2ч,
 12 запусков/24ч). Фоллбэк-режим: если cron упадёт, owner может вручную дернуть
 `executeRound()` через Basescan write-contract UI. Bot A/B redundancy + Discord
-alerts — ОТДЕЛЬНАЯ Phase 4 задача (см. §4.3).
+alerts - ОТДЕЛЬНАЯ Phase 4 задача (см. §4.3).
 
 ### 3.3 Frontend (DONE)
 
-Production: <https://lineadat.vercel.app> (renamed 2026-05-05; old `lineastr.vercel.app` redirects). Custom domain `on-chaindat.com` — см. §3.5. Vercel env вкладки:
-- `NEXT_PUBLIC_INDEXER_URL` — optional, default hardcoded к Fly URL ниже
-- `NEXT_PUBLIC_RPC_URL` — **НЕ ставить** drpc.org / blastapi.io, `wagmi-client.ts`
+Production: <https://lineadat.vercel.app> (renamed 2026-05-05; old `lineastr.vercel.app` redirects). Custom domain `on-chaindat.com` - см. §3.5. Vercel env вкладки:
+- `NEXT_PUBLIC_INDEXER_URL` - optional, default hardcoded к Fly URL ниже
+- `NEXT_PUBLIC_RPC_URL` - **НЕ ставить** drpc.org / blastapi.io, `wagmi-client.ts`
   всё равно auto-skip их, но лучше держать слот для CORS-friendly endpoint
-- `NEXT_PUBLIC_*_ADDRESS` — адреса из таблицы §3.1
+- `NEXT_PUBLIC_*_ADDRESS` - адреса из таблицы §3.1
 
 ### 3.4 Acceptance criteria для Phase 3
 
@@ -152,14 +152,14 @@ Production: <https://lineadat.vercel.app> (renamed 2026-05-05; old `lineastr.ver
 - [ ] 7 дней без crashes у keeper
 - [ ] ≥ 50 successful buyTokens / sellTokens циклов
 - [ ] ≥ 5 processTokenTwap циклов
-- [ ] Discord webhook alerts (Phase 3.6 — отложено)
-- [ ] Bot B redundancy на Fly (Phase 3.6 — отложено)
+- [ ] Discord webhook alerts (Phase 3.6 - отложено)
+- [ ] Bot B redundancy на Fly (Phase 3.6 - отложено)
 
-## Phase 3.5 — Ponder indexer (production component)
+## Phase 3.5 - Ponder indexer (production component)
 
 Self-hosted GraphQL indexer на Fly, обслуживает Holdings / Sales / Swaps таблицы
 во фронтенде. Удалось отказаться от brute-force `eth_getLogs × 4500-chunk`
-на каждого посетителя — теперь индексер один раз читает события и сервит
+на каждого посетителя - теперь индексер один раз читает события и сервит
 готовый merged history.
 
 - App: `lineastr-indexer`, region `fra`, persistent volume `lineastr_indexer_data` (1 ГБ)
@@ -177,13 +177,13 @@ fly deploy --app lineastr-indexer
 ```
 
 Persistent volume (`lineastr_indexer_data`) хранит pglite db. Если сменили
-схему / структуру событий / нужен полный reindex — destroy + recreate volume,
+схему / структуру событий / нужен полный reindex - destroy + recreate volume,
 backfill всё равно занимает секунды.
 
 ⚠️ **Ponder RPC должен быть rate-stable.** Public endpoints (`publicnode`)
-silently truncate `eth_getLogs` на multi-thousand-block ranges — индексер
+silently truncate `eth_getLogs` на multi-thousand-block ranges - индексер
 получит частичные данные без error. Используется Tenderly gateway,
-`https://base-sepolia.gateway.tenderly.co`. Для mainnet — Alchemy / Infura key.
+`https://base-sepolia.gateway.tenderly.co`. Для mainnet - Alchemy / Infura key.
 
 ### 3.5.1 RPC стратегия (важно для всего Phase 3+)
 
@@ -193,12 +193,12 @@ Browser-side `fallback()` chain в `frontend/src/lib/wagmi-client.ts`:
 3. `https://base-sepolia-rpc.publicnode.com`
 4. `https://base-sepolia.gateway.tenderly.co`
 
-`KNOWN_NO_CORS = /(?:drpc\.org|blastapi\.io)/i` — эти endpoint'ы не возвращают
-`Access-Control-Allow-Origin` и блокируют preflight-ы. Если они окажутся в env —
+`KNOWN_NO_CORS = /(?:drpc\.org|blastapi\.io)/i` - эти endpoint'ы не возвращают
+`Access-Control-Allow-Origin` и блокируют preflight-ы. Если они окажутся в env -
 автоматически выкидываются, но всё равно лучше держать в env только
 CORS-friendly RPC.
 
-## Phase 4 — Linea mainnet deploy (production)
+## Phase 4 - Linea mainnet deploy (production)
 
 ⚠️ **Эта фаза необратима. Все pre-flight checks ОБЯЗАТЕЛЬНЫ.**
 
@@ -211,11 +211,11 @@ CORS-friendly RPC.
   `DeployLineaDAT.s.sol` пока не существуют
 - [ ] Hook deploy с корректным immutable `lineaDATAddress` (предсказание адреса
   proxy через CREATE2 + mineHook salt в одном скрипте)
-- [ ] `LineaDATStrategy.factoryEscape` и `LineaDATFactory.updateHookAddressUnchecked` —
+- [ ] `LineaDATStrategy.factoryEscape` и `LineaDATFactory.updateHookAddressUnchecked` -
   testnet escape hatches, удалить или огородить chain-id guard'ом до mainnet
 - [ ] `LineaDATBot.sellEnabled = false` по умолчанию для mainnet (testnet оставлен `true`)
 - [ ] `LineaDATFactory.buyAndBurnLineaDAT` сейчас зовёт `swapExactTokensForTokens`,
-  но deployed UniversalRouter exposes `execute(...)` — переписать под v4 command flow
+  но deployed UniversalRouter exposes `execute(...)` - переписать под v4 command flow
   (или unify через PoolManager unlock)
 - [ ] Integration tests на real v4 hook fee processing + processTokenTwap +
   factory buy-and-burn (текущий `Stress.t.sol` делает TWAP no-op, `Sandwich.t.sol`
@@ -289,16 +289,16 @@ vercel --prod
 - [ ] Etherscan/Lineascan watcher на `LineaDAT_PROXY` events
 - [ ] Каждый час check `currentFees`, `ethToTwap`, `lastBuyBlock` через RPC
 - [ ] Bot A/B health через fly.io dashboard
-- [ ] Если что-то не так в первые 24 часа — у тебя есть owner privileges, fixes возможны через `updateHookAddress` или UUPS upgrade
+- [ ] Если что-то не так в первые 24 часа - у тебя есть owner privileges, fixes возможны через `updateHookAddress` или UUPS upgrade
 
 ### 4.5 Post-launch growth (неделя 1-4)
 
 - День 1-7: collect baseline metrics (volume, cycles, burn-rate, treasury growth)
-- День 7: первый retrospective — нужно ли поднять `twapIncrement` (если ETH-side пула > 5 ETH)?
-- День 14: проверка bot capital — растёт ли? Если нет — анализ почему
-- День 30: если всё стабильно — публичный report на X/Discord, привлечение audit (если ROI оправдан)
+- День 7: первый retrospective - нужно ли поднять `twapIncrement` (если ETH-side пула > 5 ETH)?
+- День 14: проверка bot capital - растёт ли? Если нет - анализ почему
+- День 30: если всё стабильно - публичный report на X/Discord, привлечение audit (если ROI оправдан)
 
-## Phase 5 — Расширение (опционально, после Phase 4 success)
+## Phase 5 - Расширение (опционально, после Phase 4 success)
 
 После того, как $LINEADAT работает стабильно ≥ 30 дней:
 - Запуск второго токена `$XYZSTR` где underlying = $XYZ (другой токен на Linea), используя ту же factory
@@ -311,17 +311,17 @@ vercel --prod
 ### Если найден критичный баг в первые 24 часа
 
 1. Owner вызывает `transferOwnership` на multisig (если уже есть) или paused-pattern (если успели добавить)
-2. UUPS upgrade implementation: `proxy.upgradeToAndCall(NEW_IMPL, "")` — заменяем на patched implementation
-3. Public statement в Discord/X — что нашли, что фиксим, никаких тихих фиксов
+2. UUPS upgrade implementation: `proxy.upgradeToAndCall(NEW_IMPL, "")` - заменяем на patched implementation
+3. Public statement в Discord/X - что нашли, что фиксим, никаких тихих фиксов
 
 ### Если бот A и B одновременно упали
 
 1. Discord alert через 10 минут downtime
-2. Ты вручную вызываешь `buyTokens()` через любой кошелёк (Keycard через MetaMask UI на Lineascan) — это аналог frontend-кнопки «Buy Target $LINEA»
+2. Ты вручную вызываешь `buyTokens()` через любой кошелёк (Keycard через MetaMask UI на Lineascan) - это аналог frontend-кнопки «Buy Target $LINEA»
 3. Я в течение часа поднимаю боты обратно
 
 ### Если frontend упал
 
-Vercel free tier обычно 99.9%+ uptime. Если down — у тебя есть:
+Vercel free tier обычно 99.9%+ uptime. Если down - у тебя есть:
 - Прямой вызов через Lineascan UI (verified contracts → Write Contract → buyTokens / sellTokens / processTokenTwap)
 - Backup статический Cloudflare Pages mirror на старом коммите

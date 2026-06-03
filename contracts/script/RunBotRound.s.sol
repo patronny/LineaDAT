@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 
 import {LineaDATBot} from "../src/LineaDATBot.sol";
 
-/// @notice Phase 3 testnet helper — manually trigger bot.executeRound() from the keeper EOA.
+/// @notice Phase 3 testnet helper - manually trigger bot.executeRound() from the keeper EOA.
 ///
 /// In production this would be called by an automated cron service (cron-job.org, GitHub Actions,
 /// Chainlink Automation, etc). This script is for manual testing or one-off runs.

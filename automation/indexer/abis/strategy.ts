@@ -1,4 +1,4 @@
-// Subset of LineaDATStrategy ABI — only the events Ponder indexes.
+// Subset of LineaDATStrategy ABI - only the events Ponder indexes.
 // Keep in sync with frontend/src/lib/abis/strategy.ts and contracts/src/LineaDATStrategy.sol.
 export const strategyAbi = [
   {

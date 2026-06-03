@@ -5,7 +5,7 @@ import { graphql } from "ponder";
 
 const app = new Hono();
 
-// CORS — must run BEFORE GraphQL handlers, otherwise graphql() responds
+// CORS - must run BEFORE GraphQL handlers, otherwise graphql() responds
 // first and the Access-Control-* headers never get attached. Browser
 // preflights (OPTIONS) also need to short-circuit here with 204.
 app.use("*", async (c, next) => {

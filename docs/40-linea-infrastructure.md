@@ -1,8 +1,8 @@
-# 40. Linea L2 Infrastructure — Uniswap v4, $LINEA token, ликвидность по DEX
+# 40. Linea L2 Infrastructure - Uniswap v4, $LINEA token, ликвидность по DEX
 
 Все факты ниже подтверждены прямым чтением через `https://rpc.linea.build` и публичными API (DefiLlama, GeckoTerminal) на `2026-05-01`.
 
-## 1. Linea — основные параметры
+## 1. Linea - основные параметры
 
 | Параметр | Значение | Источник |
 |---|---|---|
@@ -14,9 +14,9 @@
 | Native asset | ETH (через L2 bridge) | |
 | Latest block (на момент сборки) | 30 462 907 | `eth_blockNumber` |
 
-В контрактах **используем 3 секунды** для расчётов catch-up (conservative). Если Linea вернётся к 2-сек блокам — все формулы остаются валидными, просто catch-up будет быстрее.
+В контрактах **используем 3 секунды** для расчётов catch-up (conservative). Если Linea вернётся к 2-сек блокам - все формулы остаются валидными, просто catch-up будет быстрее.
 
-## 2. $LINEA token — verified canonical L2
+## 2. $LINEA token - verified canonical L2
 
 ### Контракт
 
@@ -25,7 +25,7 @@
 | Address (proxy) | `0x1789e0043623282D5DCc7F213d703C6D8BAfBB04` |
 | Implementation (EIP-1967) | `0xe03F157dE67AC4b2A9a949D64d2A3C64Ffa1BC55` |
 | Proxy Admin (EIP-1967) | `0x0ccbf317EDF1F960fE49B659B6d17cBC596DfADa` |
-| Verified | YES — `L2LineaToken`, Solidity 0.8.30, optimizer 10M runs |
+| Verified | YES - `L2LineaToken`, Solidity 0.8.30, optimizer 10M runs |
 | Author | Consensys Software Inc. |
 | Type | **Canonical Linea L2 token** (TransparentUpgradeableProxy) |
 | name / symbol / decimals | "Linea" / "LINEA" / 18 |
@@ -34,7 +34,7 @@
 | Rebase | **Нет** |
 | Blacklist | **Нет** |
 
-⚠️ **Не путать с `0x1789…bb04` mainnet версии** — это L2-нативный контракт на Linea. Используем **именно его** как `underlying`.
+⚠️ **Не путать с `0x1789…bb04` mainnet версии** - это L2-нативный контракт на Linea. Используем **именно его** как `underlying`.
 
 ### Цена и ликвидность
 
@@ -46,20 +46,20 @@
 
 ## 3. Ликвидность $LINEA по DEX на Linea (TVL ranking)
 
-Источник: GeckoTerminal API на 01.05.2026, 20 пулов с $LINEA. Считаем только LINEA/WETH пулы (релевантные для нашего бота — он покупает $LINEA за ETH).
+Источник: GeckoTerminal API на 01.05.2026, 20 пулов с $LINEA. Считаем только LINEA/WETH пулы (релевантные для нашего бота - он покупает $LINEA за ETH).
 
 | DEX | Пара | Fee tier | TVL | 24h Volume | ETH-side ≈ |
 |---|---|---|---|---|---|
 | **etherex-cl** | LINEA/WETH | **0.3%** | **$152 669** | $24 267 | ~12 ETH |
 | etherex-cl | LINEA/WETH | 0.05% | $33 318 | $36 106 | ~7 ETH |
-| syncswap-v2-1 | LINEA/WETH | — | $19 436 | $365 | ~4 ETH |
+| syncswap-v2-1 | LINEA/WETH | - | $19 436 | $365 | ~4 ETH |
 | lynex-linea | LINEA/WETH | 0.329% | $17 512 | $4 832 | ~3.6 ETH |
 | etherex-cl | LINEA/WETH | 1% | $3 076 | 0 | < 1 ETH |
 | oku-trade-linea | LINEA/WETH | 1% | $703 | $118 | < 1 ETH |
 | pancakeswap-v3-linea | LINEA/WETH | 0.25% | $658 | 0 | < 1 ETH |
 | iziswap-linea | LINEA/WETH | 1% | $634 | $2 | < 1 ETH |
-| pancakeswap-v3-linea | LINEA/WETH | 0.01% | $217 | $3 | — |
-| etherex-legacy | LINEA/WETH | — | $173 | $3 | — |
+| pancakeswap-v3-linea | LINEA/WETH | 0.01% | $217 | $3 | - |
+| etherex-legacy | LINEA/WETH | - | $173 | $3 | - |
 
 **Суммарная LINEA/WETH ликвидность:** ~$228 000 = **~50 ETH ETH-side**.
 **Дневной volume LINEA/WETH:** ~$70 000 = **~30 ETH/день**.
@@ -70,9 +70,9 @@ LINEA/USDC пулы тоже существуют ($272k etherex-cl 0.01%), но
 
 ## 4. Uniswap v4 deployments на Linea mainnet (chainId 59144)
 
-**Источник истины**: `Uniswap/sdks` repo, `sdks/sdk-core/src/addresses.ts` lines 463–478 на main branch — это тот же SDK что powering `app.uniswap.org`. Universal Router addresses — `sdks/universal-router-sdk/src/utils/constants.ts` lines 471–485.
+**Источник истины**: `Uniswap/sdks` repo, `sdks/sdk-core/src/addresses.ts` lines 463-478 на main branch - это тот же SDK что powering `app.uniswap.org`. Universal Router addresses - `sdks/universal-router-sdk/src/utils/constants.ts` lines 471-485.
 
-**Verification:** каждый адрес проверен `eth_getCode` через `https://rpc.linea.build` — все возвращают non-empty bytecode.
+**Verification:** каждый адрес проверен `eth_getCode` через `https://rpc.linea.build` - все возвращают non-empty bytecode.
 
 | Контракт | Адрес | Размер байткода |
 |---|---|---|
@@ -81,18 +81,18 @@ LINEA/USDC пулы тоже существуют ($272k etherex-cl 0.01%), но
 | **StateView** (read-only) | `0xe861de206e460a8b936b05ad3816520b58ccdf9b` | ~3.5 KB |
 | **Quoter** | `0x2c125569c0bee20a66e33e5491c552b37ebd9934` | ~6 KB |
 | **UniversalRouter V2_1_1 (v4-capable)** | `0x8B844f885672f333Bc0042cB669255f93a4C1E6b` | ~25 KB, deployed 2026-03-18 (block 29782392) |
-| UniversalRouter V2_0 (v2/v3 only — НЕ для v4) | `0x661e93cca42afacb172121ef892830ca3b70f08d` | ~20 KB |
-| **WETH9** | `0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f` | — |
-| **Permit2** (universal address) | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | — |
-| **CREATE2 deployer** | `0x0000000000FFe8B47B3e2130213B802212439497` | 4 211 bytes — есть на Linea ✓ |
+| UniversalRouter V2_0 (v2/v3 only - НЕ для v4) | `0x661e93cca42afacb172121ef892830ca3b70f08d` | ~20 KB |
+| **WETH9** | `0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f` | - |
+| **Permit2** (universal address) | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | - |
+| **CREATE2 deployer** | `0x0000000000FFe8B47B3e2130213B802212439497` | 4 211 bytes - есть на Linea ✓ |
 
-⚠️ **Используем UniversalRouter V2_1_1** (`0x8B844f…`) — V2_0 не поддерживает v4, только v2/v3.
+⚠️ **Используем UniversalRouter V2_1_1** (`0x8B844f…`) - V2_0 не поддерживает v4, только v2/v3.
 
 ### Linea Sepolia testnet (chainId 59141)
 
 ❌ **Uniswap v4 на Linea Sepolia НЕ задеплоен** на 2026-05-01.
 
-**Альтернатива для testnet:** Base Sepolia (chainId 84532) — там Uniswap v4 есть, block-time 2 секунды (близко к Linea 3с).
+**Альтернатива для testnet:** Base Sepolia (chainId 84532) - там Uniswap v4 есть, block-time 2 секунды (близко к Linea 3с).
 
 ## 5. Pool key для LineaDAT
 
@@ -150,10 +150,10 @@ Mining обычно занимает 1-10 минут на M1/M2 Macbook.
 
 ## 9. Cross-chain examples (для inspiration)
 
-- **Clanker** (Base, dynamic-fee хук для launches) — используют `beforeInitialize + afterSwap` flags
-- **Aztec** token sale (CCA hook) — кастомные permission-checked swaps
+- **Clanker** (Base, dynamic-fee хук для launches) - используют `beforeInitialize + afterSwap` flags
+- **Aztec** token sale (CCA hook) - кастомные permission-checked swaps
 
-Эти проекты — не TokenWorks, но они показывают, что Uniswap v4 hooks **рабочая инфраструктура** на mainnet и L2 уже сейчас.
+Эти проекты - не TokenWorks, но они показывают, что Uniswap v4 hooks **рабочая инфраструктура** на mainnet и L2 уже сейчас.
 
 ## 10. Verification log
 

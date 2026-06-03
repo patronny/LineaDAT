@@ -39,7 +39,7 @@ contract InitializeTest is BaseTest {
         );
 
         assertTrue(strategy2 != address(strategy), "second strategy is a separate clone");
-        // First strategy (LineaDAT) was the lineaDATAddress sentinel — second deploy doesn't change it
+        // First strategy (LineaDAT) was the lineaDATAddress sentinel - second deploy doesn't change it
         assertEq(factory.lineaDATAddress(), address(strategy));
         assertEq(factory.tokenToStrategy(address(token2)), strategy2);
     }

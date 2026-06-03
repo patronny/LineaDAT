@@ -13,13 +13,13 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
-/// @notice Phase 3.5 — Initialize Uniswap v4 pool and seed single-sided liquidity on Base Sepolia.
+/// @notice Phase 3.5 - Initialize Uniswap v4 pool and seed single-sided liquidity on Base Sepolia.
 ///
 /// SEQUENCE:
 ///   1. Deploy new LineaDATStrategy implementation (with factoryEscape function)
 ///   2. UUPS upgrade the existing proxy to the new impl
 ///   3. Deploy LineaDATSeeder
-///   4. proxy.factoryEscape(seeder, 1e27) — moves all tokens from factory to seeder
+///   4. proxy.factoryEscape(seeder, 1e27) - moves all tokens from factory to seeder
 ///   5. factory.setLoadingLiquidity(true)
 ///   6. seeder.seedAndLock(poolKey, sqrtPriceX96, tickLower, tickUpper, liquidity)
 ///   7. factory.setLoadingLiquidity(false)
@@ -42,7 +42,7 @@ contract SeedLiquidityBaseSepolia is Script {
     // sqrtPriceX96 will be derived from tickUpper using TickMath.
     int24 constant TICK_LOWER = -887220; // min tick at spacing 60
     int24 constant TICK_UPPER = 180000;  // approx 1 ETH ≈ 6.6e7 LineaDAT (FDV ~$66M with 1B supply)
-                                         // exact FDV doesn't matter for testnet — what matters is tick mechanics
+                                         // exact FDV doesn't matter for testnet - what matters is tick mechanics
     int24 constant TICK_SPACING = 60;
     uint24 constant DYNAMIC_FEE_FLAG = 0x800000;
 

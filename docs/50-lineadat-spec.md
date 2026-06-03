@@ -1,6 +1,6 @@
-# 50. LineaDAT — Финальная спецификация
+# 50. LineaDAT - Финальная спецификация
 
-Это **залоченная** спека. Все параметры одобрены пользователем (1 мая 2026). Любые изменения — через явный `git rm` + новая ревизия этого документа.
+Это **залоченная** спека. Все параметры одобрены пользователем (1 мая 2026). Любые изменения - через явный `git rm` + новая ревизия этого документа.
 
 ## 1. Идентификатор и базовая семантика
 
@@ -24,12 +24,12 @@
 | `twapIncrement` | **0.05 ETH** = 5 × 10¹⁶ wei | conservative для тонкого пула, поднимаем `setTwapIncrement` руками когда пул вырастет |
 | `twapDelayInBlocks` | **4** (= 12 секунд на Linea) | защита от same-block sandwich MEV; эквивалент mainnet `1×12с` |
 | `STARTING_BUY_FEE` | **9 900** bps (99%) | копия v3 |
-| `DEFAULT_FEE` | **1 000** bps (10%) — buy after decay AND sell всегда | копия v3 |
+| `DEFAULT_FEE` | **1 000** bps (10%) - buy after decay AND sell всегда | копия v3 |
 | Buy-fee decay rate | **−100 bps/мин** | копия v3, плато за 89 мин |
 | Fee split (technical) | **80% / 10% / 10%** = treasury / LineaDAT-burn / creator | копия v3, см. §3 |
 | Fee split (effective for $LINEADAT self-launch) | **80% / 20%** = treasury / creator | edge-case: LineaDAT-burn redirected в feeAddress пока collection == LineaDAT_ADDRESS |
 
-## 3. Fee split — точная логика
+## 3. Fee split - точная логика
 
 Источник для модификации: [`research/tokenworks-hook/ERC20StrategyHook.sol:_processFees`](../research/tokenworks-hook/ERC20StrategyHook.sol).
 
@@ -70,7 +70,7 @@ function _processFees(address collection, uint256 feeAmount) internal {
 
 `feeAddressClaimedByOwner[LineaDAT_PROXY] = 0x6e0d01089976093680c881CcDcB79e0D046e2433` (наш feeAddress).
 
-⚠️ **Если не установить** — ownerAmount сольётся в treasury (как у WBTCSTR), creator получит 0 от sell-fees. Это **обязательный шаг** в deployment runbook.
+⚠️ **Если не установить** - ownerAmount сольётся в treasury (как у WBTCSTR), creator получит 0 от sell-fees. Это **обязательный шаг** в deployment runbook.
 
 ### Эффективные схемы
 
@@ -81,7 +81,7 @@ function _processFees(address collection, uint256 feeAmount) internal {
 - = **80% treasury / 20% creator**
 
 **Для будущего токена `$XYZSTR` (например $ETHSTR на Linea):**
-- 80% treasury (накапливает ETH под выкуп ETH-bag — ну, фигурально, под underlying)
+- 80% treasury (накапливает ETH под выкуп ETH-bag - ну, фигурально, под underlying)
 - 10% LineaDAT-burn (factory → ETH→LineaDAT swap → dead)
 - 10% creator
 - = **80% treasury / 10% LineaDAT-burn / 10% creator**
@@ -104,7 +104,7 @@ function _processFees(address collection, uint256 feeAmount) internal {
 | Liquidity reserves | 0 ETH + ~1 000 000 000 LineaDAT (минус ~1k wei на rounding) |
 | LP-NFT (PositionManager) | tokenId TBD → minted to `0x000…dEaD` сразу |
 
-**Точный sqrtPriceX96** при ETH ≈ $2 317 на момент launch будет пересчитан скриптом deploy: цель — initial price `1 LineaDAT = (target_FDV $100k) / 1B / ETH_price = $0.0001 / $2 317 = 4.3 × 10⁻⁸ ETH = 4.3 × 10¹⁰ wei = 1 LineaDAT / 23 165 248 ETH-units`.
+**Точный sqrtPriceX96** при ETH ≈ $2 317 на момент launch будет пересчитан скриптом deploy: цель - initial price `1 LineaDAT = (target_FDV $100k) / 1B / ETH_price = $0.0001 / $2 317 = 4.3 × 10⁻⁸ ETH = 4.3 × 10¹⁰ wei = 1 LineaDAT / 23 165 248 ETH-units`.
 
 `sqrtPriceX96 = sqrt(token1/token0) × 2⁹⁶`. Если `token1/token0 = 23 165 248` (LineaDAT per ETH), то `sqrtP = 4 813.03`, `sqrtPriceX96 = 4 813.03 × 2⁹⁶ ≈ 3.81 × 10²⁹`. Сценарий пересчитаем точно в момент deploy под текущий ETH price.
 
@@ -127,7 +127,7 @@ function _processFees(address collection, uint256 feeAmount) internal {
 | **Bot B** (standby) | **1 ETH** (≈$2 317) |
 | **Total upfront** | **3 ETH** ≈ **$6 951** |
 
-При успешном steady-state капитал растёт (каждый цикл +0.04 ETH профита). Если упадёт ниже **0.5 ETH** на боте — Discord alert, ты доливаешь с holdings.
+При успешном steady-state капитал растёт (каждый цикл +0.04 ETH профита). Если упадёт ниже **0.5 ETH** на боте - Discord alert, ты доливаешь с holdings.
 
 ### 5.3 Bot algorithm (псевдокод)
 
@@ -156,7 +156,7 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 
 ### 5.4 Failover logic
 
-- Bot B каждые 60 секунд читает `lastBuyBlock` через RPC. Если за **3 минуты** `lastBuyBlock` не двигался **И** `availableFunds() ≥ marketPrice × 1.10` (= условие срабатывания) — это значит Bot A молчит. Bot B берёт работу.
+- Bot B каждые 60 секунд читает `lastBuyBlock` через RPC. Если за **3 минуты** `lastBuyBlock` не двигался **И** `availableFunds() ≥ marketPrice × 1.10` (= условие срабатывания) - это значит Bot A молчит. Bot B берёт работу.
 - При возвращении Bot A: оба видят что `lastBuyBlock` свежий, оба возвращаются к нормальному режиму (B ждёт триггера).
 
 ## 6. Frontend
@@ -193,22 +193,22 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 └─────────────────────────────────────────────────────┘
 ```
 
-**Кнопка 1 — Sell $LINEA → Strategy.** Эквивалент `Approve $WBTC + buyTokens()` у TokenWorks (см. их UI на скрине пользователя). Двухшаговый flow:
-- Step 1 (`approve`): `LINEA.approve(LineaDAT_PROXY, 150_000e18)` — разово.
-- Step 2 (`buyTokens`): вызов `LineaDAT_PROXY.buyTokens()` — контракт вытягивает 150k LINEA, платит `availableFunds()` ETH юзеру.
-- UI live-читает: `availableFunds` из proxy, `marketPrice(150 000 LINEA)` через GeckoTerminal API + Etherex/Lynex quote, выводит **premium** = разницу. Если premium ≤ 0 — кнопка показывает «Not profitable yet — wait for fees to accumulate» (не disabled, юзер может всё равно нажать).
+**Кнопка 1 - Sell $LINEA → Strategy.** Эквивалент `Approve $WBTC + buyTokens()` у TokenWorks (см. их UI на скрине пользователя). Двухшаговый flow:
+- Step 1 (`approve`): `LINEA.approve(LineaDAT_PROXY, 150_000e18)` - разово.
+- Step 2 (`buyTokens`): вызов `LineaDAT_PROXY.buyTokens()` - контракт вытягивает 150k LINEA, платит `availableFunds()` ETH юзеру.
+- UI live-читает: `availableFunds` из proxy, `marketPrice(150 000 LINEA)` через GeckoTerminal API + Etherex/Lynex quote, выводит **premium** = разницу. Если premium ≤ 0 - кнопка показывает «Not profitable yet - wait for fees to accumulate» (не disabled, юзер может всё равно нажать).
 
-**Кнопка 2 — Buy bag at 1.2× from Strategy.** Эквивалент `sellTokens(bagId)` — это **наша добавка** (у TokenWorks этого нет в виде отдельной кнопки, у них сделано через список bag'ов). UI:
+**Кнопка 2 - Buy bag at 1.2× from Strategy.** Эквивалент `sellTokens(bagId)` - это **наша добавка** (у TokenWorks этого нет в виде отдельной кнопки, у них сделано через список bag'ов). UI:
 - Читает `lastBagId`, потом для каждого `bagId in [1..lastBagId]` вызывает `onSale[bagId]` (read-only).
 - Фильтрует non-zero (= active bag'и в листинге).
 - Считает «у какого `listPrice / 150 000 LINEA` ниже текущей рыночной цены $LINEA» → выводит топ-1.
-- Кнопка вызывает `LineaDAT_PROXY.sellTokens{value: listPrice}(bagId)` — контракт отдаёт 150k LINEA, юзер платит ровно `listPrice`.
-- Если все bag'и невыгодны — кнопка disabled с tooltip «No profitable bag — market price is below Strategy listings».
+- Кнопка вызывает `LineaDAT_PROXY.sellTokens{value: listPrice}(bagId)` - контракт отдаёт 150k LINEA, юзер платит ровно `listPrice`.
+- Если все bag'и невыгодны - кнопка disabled с tooltip «No profitable bag - market price is below Strategy listings».
 - Это **frontend-эквивалент `0xca60e8f0`** (sell-side bag-buyer на WBTCSTR, 77% всех `sellTokens()`). Привлекает органических покупателей $LINEA через стратегию.
 
-**Кнопка 3 — Burn LineaDAT (+0.5% reward).** Точная копия паттерна WBTCSTR. UI:
+**Кнопка 3 - Burn LineaDAT (+0.5% reward).** Точная копия паттерна WBTCSTR. UI:
 - Live-читает `ethToTwap` из proxy.
-- Disabled если `ethToTwap == 0n` с подписью «No ETH to Burn — wait for next bag-sale».
+- Disabled если `ethToTwap == 0n` с подписью «No ETH to Burn - wait for next bag-sale».
 - Active иначе: «Burn `min(ethToTwap, 0.05) ETH` → buys & burns ≈ X LineaDAT. Reward: `0.5% × min(ethToTwap, 0.05)` ETH ≈ $0.5».
 - Вызывает `LineaDAT_PROXY.processTokenTwap()`.
 
@@ -216,13 +216,13 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 
 Источники для всех чисел в UI:
 - On-chain (через wagmi/viem, частота: на каждый block через `watchBlocks`):
-  - `currentFees`, `ethToTwap`, `lastBuyBlock`, `lastBagId`, `availableFunds()`, `getMaxPriceForBuy()` — proxy slots
-  - `LINEA.balanceOf(LineaDAT_PROXY)` — treasury inventory
-  - `totalSupply()` − `balanceOf(0xdead)` — circulating supply (показатель «сколько уже сожжено»)
+  - `currentFees`, `ethToTwap`, `lastBuyBlock`, `lastBagId`, `availableFunds()`, `getMaxPriceForBuy()` - proxy slots
+  - `LINEA.balanceOf(LineaDAT_PROXY)` - treasury inventory
+  - `totalSupply()` − `balanceOf(0xdead)` - circulating supply (показатель «сколько уже сожжено»)
   - `onSale[bagId]` для всех active bag'ов
 - Off-chain (REST polling каждые 30 секунд):
-  - GeckoTerminal `/api/v2/networks/linea/tokens/0x1789e004…bb04/pools` — текущая цена $LINEA для расчёта premium
-  - DefiLlama `/coins.llama.fi/prices/current/coingecko:ethereum` — ETH-USD для конвертации
+  - GeckoTerminal `/api/v2/networks/linea/tokens/0x1789e004…bb04/pools` - текущая цена $LINEA для расчёта premium
+  - DefiLlama `/coins.llama.fi/prices/current/coingecko:ethereum` - ETH-USD для конвертации
 
 ## 7. Owner и admin policy
 
@@ -230,9 +230,9 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 |---|---|
 | **Owner** | **`0x1470c542D60e83EcCFE005332f5789Bd669D027C`** (Keycard EOA пользователя, EIP-55 verified, fresh nonce=0 на Ethereum + Linea на момент 2026-05-01) |
 | **`feeAddress`** | **`0x6e0d01089976093680c881CcDcB79e0D046e2433`** |
-| **Renounce** | **«Никогда» с возможностью в любой момент** — на старте non-renounced, при необходимости (например, если найдут критичный баг и мы успешно его пофиксили) renounce делается одной транзакцией `transferOwnership(0xdead)` или `renounceOwnership()` |
+| **Renounce** | **«Никогда» с возможностью в любой момент** - на старте non-renounced, при необходимости (например, если найдут критичный баг и мы успешно его пофиксили) renounce делается одной транзакцией `transferOwnership(0xdead)` или `renounceOwnership()` |
 | **Admin functions, доступные owner** | `updateHookAddress`, `setDistributor`, `_authorizeUpgrade` (UUPS), `setPriceMultiplier` (через factory), `updateBagSize` (только пока `lastBagId == 0`), `setTwapIncrement` (планируется добавить как `onlyOwner` setter поверх v3) |
-| **Pre-launch checklist owner-кошелька** | (1) ≥ 0.05 ETH на Linea для газа deploy + initialize + post-init настроек; (2) ключ хранится только на Keycard, **никогда** не загружается на хост-серверы; (3) для каждой admin-tx — ручная подпись через Keycard ↔ MetaMask flow |
+| **Pre-launch checklist owner-кошелька** | (1) ≥ 0.05 ETH на Linea для газа deploy + initialize + post-init настроек; (2) ключ хранится только на Keycard, **никогда** не загружается на хост-серверы; (3) для каждой admin-tx - ручная подпись через Keycard ↔ MetaMask flow |
 
 ## 8. Что нужно изменить в v3-сурсах для LineaDAT
 
@@ -240,14 +240,14 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 
 ### `BaseStrategy.sol`
 - [ ] Добавить MIT-header `// Based on TokenWorks ERC20Strategy v3 (MIT). Original: token.works`
-- [ ] Сменить `GLOBAL_DISTRIBUTION_HANDLER` (на mainnet hardcoded `0xDf99…9B2D`) — на адрес для Linea **или ноль** (в коде есть fallback `block.chainid == 1 ? CONST : globalDistributor`, для Linea будет использоваться `globalDistributor` storage var, который owner устанавливает через `setGlobalDistributor`)
-- [ ] Добавить `setTwapIncrement(uint256)` `onlyOwner` setter (нужен для раскачки twapIncrement когда пул вырастет; в v3 такого нет — нужно добавить аккуратно)
-- [ ] **Storage layout не меняем** — все поля в том же порядке для совместимости с indexer'ами
+- [ ] Сменить `GLOBAL_DISTRIBUTION_HANDLER` (на mainnet hardcoded `0xDf99…9B2D`) - на адрес для Linea **или ноль** (в коде есть fallback `block.chainid == 1 ? CONST : globalDistributor`, для Linea будет использоваться `globalDistributor` storage var, который owner устанавливает через `setGlobalDistributor`)
+- [ ] Добавить `setTwapIncrement(uint256)` `onlyOwner` setter (нужен для раскачки twapIncrement когда пул вырастет; в v3 такого нет - нужно добавить аккуратно)
+- [ ] **Storage layout не меняем** - все поля в том же порядке для совместимости с indexer'ами
 
 ### `ERC20Strategy.sol`
 - [ ] Добавить MIT-header
 - [ ] `VERSION()` → возвращает 3 (мы форкаем v3, не делаем 4)
-- [ ] Логика `buyTokens` / `sellTokens` / `list` / `updateBagSize` — без изменений
+- [ ] Логика `buyTokens` / `sellTokens` / `list` / `updateBagSize` - без изменений
 
 ### `ERC20StrategyHook.sol`
 - [ ] Добавить MIT-header
@@ -258,15 +258,15 @@ setInterval(tick, BLOCK_TIME_MS);  // 3000ms
 - [ ] Переименовать ошибки `NotNFTStrategy` → `NotStrategy`, `NotNFTStrategyFactoryOwner` → `NotStrategyFactoryOwner`
 - [ ] Переименовать event `Trade.nftStrategy` → `strategy`
 
-### Factory (новый, наш — TokenWorks factory не используем)
-- [ ] Свой минимальный factory, deploy LineaDAT proxy + hook + initialize pool + seed liquidity + send LP-NFT в dead. Инспирация — TokenWorks Factory `0x9f834e16…000a0a`, но мы не клонируем launchpad-логику (нам не нужен `ownerLaunchStrategy` permissionless flow).
-- [ ] Factory держит `LineaDAT_ADDRESS` immutable — после первого deploy он зафиксирован
-- [ ] Factory имеет логику для buy-and-burn LineaDAT (получает ETH из hook через `forceSafeTransferETH`, свопает ETH→LineaDAT через UniversalRouter V2_1_1, шлёт на dead) — это используется только на будущих strategies, не на самом LineaDAT
+### Factory (новый, наш - TokenWorks factory не используем)
+- [ ] Свой минимальный factory, deploy LineaDAT proxy + hook + initialize pool + seed liquidity + send LP-NFT в dead. Инспирация - TokenWorks Factory `0x9f834e16…000a0a`, но мы не клонируем launchpad-логику (нам не нужен `ownerLaunchStrategy` permissionless flow).
+- [ ] Factory держит `LineaDAT_ADDRESS` immutable - после первого deploy он зафиксирован
+- [ ] Factory имеет логику для buy-and-burn LineaDAT (получает ETH из hook через `forceSafeTransferETH`, свопает ETH→LineaDAT через UniversalRouter V2_1_1, шлёт на dead) - это используется только на будущих strategies, не на самом LineaDAT
 
 ## 9. Параметры для `initialize()`
 
 ```solidity
-// Deploy script — псевдокод
+// Deploy script - псевдокод
 LineaDATStrategy proxy = factory.deployStrategy({
     underlying:        0x1789e0043623282D5DCc7F213d703C6D8BAfBB04,  // $LINEA
     bagSize:           150_000 * 1e18,                              // 150 000 LINEA
@@ -284,28 +284,28 @@ hook.adminUpdateFeeAddress(
 );
 
 proxy.setPriceMultiplier(1200);   // 1.2× markup (default уже 1200, но фиксируем явно)
-// twapIncrement default = 1 ETH в v3, нам нужно 0.05 ETH — добавляем setter:
+// twapIncrement default = 1 ETH в v3, нам нужно 0.05 ETH - добавляем setter:
 proxy.setTwapIncrement(0.05 ether);
 proxy.setTwapDelayInBlocks(4);    // 12 секунд на Linea
 ```
 
-## 10. Безопасность — чек-лист до deploy
+## 10. Безопасность - чек-лист до deploy
 
-- [ ] **Slither** на все .sol файлы — 0 high/medium findings
-- [ ] **Aderyn** — 0 high findings
-- [ ] **Foundry tests** — 100+ scenarios:
+- [ ] **Slither** на все .sol файлы - 0 high/medium findings
+- [ ] **Aderyn** - 0 high findings
+- [ ] **Foundry tests** - 100+ scenarios:
   - happy path: buy → sell → buy-and-burn cycle
   - bot front-running: 2 ботов на одном блоке, конкуренция
   - slow-rug attempt: bot ждёт N блоков, проверяем, что `availableFunds` → bound by `currentFees`
   - sandwich attack на `processTokenTwap`
-  - re-entrancy через ERC-777 underlying — но `$LINEA` не ERC-777, ок
+  - re-entrancy через ERC-777 underlying - но `$LINEA` не ERC-777, ок
   - empty pool: вызов `buyTokens` / `sellTokens` / `processTokenTwap` когда баланс 0
 - [ ] **Manual review** Adam Lizek's mistakes из [`30-tokenworks-incidents.md`](30-tokenworks-incidents.md):
   - feeAddressClaimedByOwner установлен ✓
   - bot deployed before launch ✓
   - frontend «Buy Target $LINEA» button готова ✓
-- [ ] **Anvil fork test** — 1000 циклов в ускоренной симуляции (jump 100 блоков, mine, проверка инвариантов)
-- [ ] **Base Sepolia public test** — минимум 7 дней, ты тестируешь UI с реального Keycard
+- [ ] **Anvil fork test** - 1000 циклов в ускоренной симуляции (jump 100 блоков, mine, проверка инвариантов)
+- [ ] **Base Sepolia public test** - минимум 7 дней, ты тестируешь UI с реального Keycard
 
 ## 11. Live benchmark from prototypes (как калибровать ожидания)
 
@@ -333,7 +333,7 @@ proxy.setTwapDelayInBlocks(4);    // 12 секунд на Linea
 | `0xe08d97e1...d015` | 2 (6%) | smart-contract bot |
 | 13 разных EOA | 1 каждый (38% в сумме) | random users через UI |
 
-**Вывод:** на WBTCSTR доминирует **smart-contract bot pattern** (62% всех циклов от 4 bot'ов). Наши 2 EOA-бота на старте будут проще, но менее эффективны. План: **в version 2 ботов** перейти на smart-contract pattern (как `0xaf682de1`) — flashbot-like, atomic swap+buyTokens в одной tx.
+**Вывод:** на WBTCSTR доминирует **smart-contract bot pattern** (62% всех циклов от 4 bot'ов). Наши 2 EOA-бота на старте будут проще, но менее эффективны. План: **в version 2 ботов** перейти на smart-contract pattern (как `0xaf682de1`) - flashbot-like, atomic swap+buyTokens в одной tx.
 
 ### Sell-side benchmark
 
@@ -345,6 +345,6 @@ proxy.setTwapDelayInBlocks(4);    // 12 секунд на Linea
 
 - **Treasury growth:** ≥ 1.5 ETH realized profit + 8 × bagSize ≈ 1.2M LINEA в inventory ⇒ **~$2 800 USD в treasury**
 - **Burn cumulative:** ≥ 30 × 0.04 ETH × 2.5M LineaDAT/ETH ≈ **3M LineaDAT сожжено** = 0.3% supply
-- **Bot ROI (наш):** +1.5 ETH / 3 ETH capital = **+50%** за 90 дней — это **достаточно** чтобы покрыть hosting + газ и ещё иметь margin
+- **Bot ROI (наш):** +1.5 ETH / 3 ETH capital = **+50%** за 90 дней - это **достаточно** чтобы покрыть hosting + газ и ещё иметь margin
 
-⚠️ **Предупреждение:** эти цифры основаны на **WBTCSTR baseline**, который сам по себе — относительно мёртвый рынок (0.31 цикла/день). Если LineaDAT получит **больше** интереса (волна meme-buyers, листинг на CEX, etc.) — числа вырастут на ×3–10. Если **меньше** (как REKTSTR, 3 цикла за 5 месяцев) — flywheel будет почти стоять.
+⚠️ **Предупреждение:** эти цифры основаны на **WBTCSTR baseline**, который сам по себе - относительно мёртвый рынок (0.31 цикла/день). Если LineaDAT получит **больше** интереса (волна meme-buyers, листинг на CEX, etc.) - числа вырастут на ×3-10. Если **меньше** (как REKTSTR, 3 цикла за 5 месяцев) - flywheel будет почти стоять.

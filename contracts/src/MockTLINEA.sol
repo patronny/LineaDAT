@@ -50,7 +50,7 @@ contract MockTLINEA is ERC20, Ownable {
         _mint(to, amount);
     }
 
-    /// @notice Public faucet — anyone can claim FAUCET_AMOUNT once per FAUCET_COOLDOWN.
+    /// @notice Public faucet - anyone can claim FAUCET_AMOUNT once per FAUCET_COOLDOWN.
     function faucetClaim() external {
         if (block.timestamp < lastFaucetAt[msg.sender] + FAUCET_COOLDOWN) revert FaucetCooldown();
         if (faucetMinted + FAUCET_AMOUNT > FAUCET_TOTAL_CAP) revert FaucetCapReached();

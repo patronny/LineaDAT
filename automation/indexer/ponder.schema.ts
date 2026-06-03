@@ -1,7 +1,7 @@
 import { onchainTable, index } from "ponder";
 
 /**
- * Bag — one row per ERC20BoughtByProtocol event. Represents a 150k tLINEA bag the
+ * Bag - one row per ERC20BoughtByProtocol event. Represents a 150k tLINEA bag the
  * bot purchased and listed at 1.2× markup. soldFor / soldAt populate later when
  * the bag is redeemed via ERC20SoldByProtocol.
  */
@@ -15,7 +15,7 @@ export const bag = onchainTable(
     paid: t.bigint().notNull(),       // ETH the bot paid
     listPrice: t.bigint().notNull(),  // ETH list price (paid × 1.2)
     soldFor: t.bigint(),              // ETH actually received on redemption
-    soldAt: t.integer(),              // unix seconds — null while still listed
+    soldAt: t.integer(),              // unix seconds - null while still listed
     soldTxHash: t.hex(),
     buyer: t.hex(),
   }),
@@ -26,7 +26,7 @@ export const bag = onchainTable(
 );
 
 /**
- * Swap — one row per Trade event from the LineaDAT hook. Captures user-driven
+ * Swap - one row per Trade event from the LineaDAT hook. Captures user-driven
  * buys/sells against the v4 pool (the bot path uses a different code path and
  * does not emit Trade).
  */

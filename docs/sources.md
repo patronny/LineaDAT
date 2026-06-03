@@ -2,7 +2,7 @@
 
 Сводный индекс всех ссылок, использованных при research-проходе.
 
-## Прототипы — Etherscan / Sourcify
+## Прототипы - Etherscan / Sourcify
 
 ### REKTSTR (ERC20Strategy v2)
 - Proxy: <https://etherscan.io/address/0xb40ede070d9d9f37e32a106b04b29e20ef6ee26e>
@@ -11,7 +11,7 @@
 - Underlying $REKT: <https://etherscan.io/token/0xdd3b11ef34cd511a2da159034a05fcb94d806686>
 - TokenStrategy UI: <https://www.tokenstrategy.com/strategies/0xb40ede070d9d9f37e32a106b04b29e20ef6ee26e>
 
-### WBTCSTR (ERC20Strategy v3) — наш прототип
+### WBTCSTR (ERC20Strategy v3) - наш прототип
 - Proxy: <https://etherscan.io/address/0x7af2a142c3486a9726791098e6415b768513e363>
 - Implementation: <https://etherscan.io/address/0xb1a3015b61e4eac9253a674c6942cdc5dd8de510>
 - Hook: <https://etherscan.io/address/0x9f8f375b2d246da6be816b453f13d43d8240a444>
@@ -69,10 +69,10 @@
 
 ## TokenStrategy public mentions
 
-- docs.tokenstrategy.com — fee structure, anti-snipe details
-- bankless.com / Adam Levy — анализ PNKSTR launch и патчей
-- nftstrategy.fun — UI для NFTStrategy токенов
-- punkstrategy.fun — UI для PNKSTR
+- docs.tokenstrategy.com - fee structure, anti-snipe details
+- bankless.com / Adam Levy - анализ PNKSTR launch и патчей
+- nftstrategy.fun - UI для NFTStrategy токенов
+- punkstrategy.fun - UI для PNKSTR
 - Bindoon's PunkStrategy v1 community разбор: <https://github.com/bindoon/PunkStrategy>
 
 ## Incidents references
@@ -83,7 +83,7 @@
 
 ## Что НЕ нашли в публичных источниках
 
-- Реакции samczsun / pashov / spreekaway / DeFiHackLabs на TokenWorks bugs — не публиковались
-- Rekt.news статья — не было (импакт ниже их $1M+ порога)
-- Тех-postmortem от Rhynotic в Medium / Mirror / HackMD — не найден
-- `0xleastwood` audit report — упоминание есть, отчёт публично не опубликован
+- Реакции samczsun / pashov / spreekaway / DeFiHackLabs на TokenWorks bugs - не публиковались
+- Rekt.news статья - не было (импакт ниже их $1M+ порога)
+- Тех-postmortem от Rhynotic в Medium / Mirror / HackMD - не найден
+- `0xleastwood` audit report - упоминание есть, отчёт публично не опубликован

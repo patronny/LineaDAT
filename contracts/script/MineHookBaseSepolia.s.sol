@@ -8,7 +8,7 @@ import {LineaDATHook} from "../src/LineaDATHook.sol";
 import {ILineaDATFactory} from "../src/Interfaces.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-/// @notice Phase 3.5 — mine a CREATE2 salt for LineaDATHook on Base Sepolia.
+/// @notice Phase 3.5 - mine a CREATE2 salt for LineaDATHook on Base Sepolia.
 ///
 /// Required hook permission flags = 0x2444
 ///   = BEFORE_INITIALIZE | AFTER_ADD_LIQUIDITY | AFTER_SWAP | AFTER_SWAP_RETURNS_DELTA
@@ -21,7 +21,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 ///   forge script script/MineHookBaseSepolia.s.sol:MineHookBaseSepolia \
 ///     --rpc-url https://base-sepolia-rpc.publicnode.com -vvv
 contract MineHookBaseSepolia is Script {
-    /// @notice Standard Foundry CREATE2 deployer — verified live on Base Sepolia (cast code returned bytecode)
+    /// @notice Standard Foundry CREATE2 deployer - verified live on Base Sepolia (cast code returned bytecode)
     address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
     /// @notice Required hook permission bits (matches LineaDATHook.getHookPermissions)

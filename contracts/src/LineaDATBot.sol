@@ -7,7 +7,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {IERC20} from "./Interfaces.sol";
 
-/// @notice External strategy interface — only the parts LineaDATBot calls.
+/// @notice External strategy interface - only the parts LineaDATBot calls.
 /// We define this locally (not in Interfaces.sol) so the bot has a tight ABI and doesn't pull in unrelated functions.
 interface ILineaDATStrategyView {
     function availableFunds() external view returns (uint256);
@@ -26,26 +26,26 @@ interface ILineaDATStrategyView {
 
 /// @notice LineaDAT atomic keeper bot.
 /// @dev Runs `executeRound()` from a trusted keeper EOA. Each round attempts up to 3 atomic actions:
-///        1. buyTokens() — if availableFunds >= buyThreshold AND bot has enough underlying
-///        2. sellTokens(bagId) — if onSale[bagId] is affordable AND bot has enough ETH
-///        3. processTokenTwap() — if ethToTwap >= twapIncrement AND twapDelay has elapsed
+///        1. buyTokens() - if availableFunds >= buyThreshold AND bot has enough underlying
+///        2. sellTokens(bagId) - if onSale[bagId] is affordable AND bot has enough ETH
+///        3. processTokenTwap() - if ethToTwap >= twapIncrement AND twapDelay has elapsed
 ///
-///      Each action wrapped in try/catch — if any individual action reverts (e.g. someone front-ran the bag,
+///      Each action wrapped in try/catch - if any individual action reverts (e.g. someone front-ran the bag,
 ///      a swap-fee deposit just landed, etc.), the round still completes the remaining actions. The whole
 ///      round is atomic from the standpoint of state mutation: there's no half-state where we approved tokens
 ///      but didn't buy.
 ///
 ///      Bot architecture chosen: option (a) Multicall-bot, NOT MEV-bundle bot. Justification:
 ///        - LineaDAT's slow-rug protection (getMaxPriceForBuy ramp) makes frontrunning economically pointless
-///          — every bot pays the same `availableFunds()` regardless of timing
+///          - every bot pays the same `availableFunds()` regardless of timing
 ///        - L2 (Linea, Base) gas is cheap → atomic batched calls are cheaper than separate txs
 ///        - No off-chain runner needed → smaller attack surface, no leaked private keys on fly.io
 ///        - Keeper can be triggered from any cron service (cron-job.org, GitHub Actions, Chainlink Automation)
 ///
-/// @dev Funded with: tLINEA tokens (for buyTokens — bot sells underlying for ETH), and ETH (for sellTokens —
+/// @dev Funded with: tLINEA tokens (for buyTokens - bot sells underlying for ETH), and ETH (for sellTokens -
 ///                     bot buys bags back from itself / others, and for processTokenTwap which costs gas).
 ///
-///      In practice on testnet, sellTokens isn't a profitable action for the bot directly — the 1.2× markup is
+///      In practice on testnet, sellTokens isn't a profitable action for the bot directly - the 1.2× markup is
 ///      a profit FOR the protocol, not for the bag-buyer-back. But we include it for completeness so bags don't
 ///      sit unsold forever during testnet validation. On mainnet (Phase 4) we'd disable sellTokens in the bot.
 contract LineaDATBot is Ownable, ReentrancyGuard {
@@ -107,7 +107,7 @@ contract LineaDATBot is Ownable, ReentrancyGuard {
     /// @param _strategy LineaDAT strategy proxy address
     /// @param _underlying The ERC-20 token to feed into buyTokens (tLINEA on testnet, $LINEA on mainnet)
     /// @param _keeper Initial keeper EOA address (cron-job runner)
-    /// @param _owner Owner — can rotate keeper, withdraw funds, change config
+    /// @param _owner Owner - can rotate keeper, withdraw funds, change config
     constructor(address _strategy, address _underlying, address _keeper, address _owner) {
         if (_strategy == address(0) || _underlying == address(0) || _keeper == address(0) || _owner == address(0)) {
             revert ZeroAddress();
@@ -118,7 +118,7 @@ contract LineaDATBot is Ownable, ReentrancyGuard {
 
         // Sane defaults
         buyThreshold = 0.02 ether; // = buyIncrement; below this paid is too small to cover gas
-        maxSellPrice = 1 ether; // hard cap — bot won't buy bags listed above this
+        maxSellPrice = 1 ether; // hard cap - bot won't buy bags listed above this
         scanDepth = 10;
         twapEnabled = true;
         sellEnabled = true;
@@ -140,7 +140,7 @@ contract LineaDATBot is Ownable, ReentrancyGuard {
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
 
     /// @notice Runs one bot round. Tries: 1) buyTokens, 2) sellTokens up to N bags, 3) processTokenTwap.
-    /// @dev Each step is independent — if step N reverts, step N+1 still runs.
+    /// @dev Each step is independent - if step N reverts, step N+1 still runs.
     /// @param roundId Caller-supplied identifier for log correlation. Not used on-chain.
     function executeRound(uint256 roundId) external onlyKeeper nonReentrant {
         bool boughtBag = _tryBuy();

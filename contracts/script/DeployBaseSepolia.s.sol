@@ -17,9 +17,9 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 /// LineaDATHook via CREATE2). Rationale:
 ///   1. Phase 3 main goal is bot validation under live network conditions, NOT full Uniswap v4 pool integration
 ///   2. Without a real hook, we can't initialize a Uniswap v4 pool (hook permission flags wouldn't validate)
-///   3. P2P buyTokens / sellTokens don't depend on Uniswap pool — they only depend on currentFees and onSale state
+///   3. P2P buyTokens / sellTokens don't depend on Uniswap pool - they only depend on currentFees and onSale state
 ///   4. We seed currentFees by having the deployer EOA call strategy.addFees{value: X}() (deployer is hookAddress)
-///   5. processTokenTwap will fail (no real pool) but bot's _tryTwap has try/catch — it logs and moves on
+///   5. processTokenTwap will fail (no real pool) but bot's _tryTwap has try/catch - it logs and moves on
 ///
 /// Phase 4 (Linea mainnet) will use the full CREATE2-mined hook + pool init pipeline (see Deploy.s.sol).
 ///
@@ -38,10 +38,10 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 ///  12. Seed initial fees: deployer calls proxy.addFees{value: 0.5 ether}()
 ///
 /// ENV VARS:
-///   PRIVATE_KEY              — deployer EOA private key (also acts as hook, must hold ETH on Base Sepolia)
-///   OWNER_EOA                — owner of strategy + bot + tLINEA (typically deployer for testnet)
-///   KEEPER_EOA               — keeper EOA that will run bot.executeRound() (can be same as deployer)
-///   FEE_ADDRESS              — recipient of protocol fees (typically owner)
+///   PRIVATE_KEY              - deployer EOA private key (also acts as hook, must hold ETH on Base Sepolia)
+///   OWNER_EOA                - owner of strategy + bot + tLINEA (typically deployer for testnet)
+///   KEEPER_EOA               - keeper EOA that will run bot.executeRound() (can be same as deployer)
+///   FEE_ADDRESS              - recipient of protocol fees (typically owner)
 ///
 /// USAGE:
 ///   forge script script/DeployBaseSepolia.s.sol:DeployBaseSepolia \
@@ -100,7 +100,7 @@ contract DeployBaseSepolia is Script {
         factory.setStrategyImplementation(address(impl));
         console.log("[4] Factory.setStrategyImplementation: ok");
 
-        // Step 5: Set hook to deployer EOA (Phase 3 testnet shortcut — deployer can call addFees)
+        // Step 5: Set hook to deployer EOA (Phase 3 testnet shortcut - deployer can call addFees)
         // Use the *Unchecked variant because deployer is an EOA (no code), the production
         // updateHookAddress requires a real CREATE2-mined hook contract.
         factory.updateHookAddressUnchecked(deployer);

@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-/// @notice Phase 2 entry point — points to the actual implementation in test/Stress.t.sol.
+/// @notice Phase 2 entry point - points to the actual implementation in test/Stress.t.sol.
 ///
 /// We chose the test-suite approach over a script approach because:
 ///   1. Foundry tests have first-class fork support via `vm.createSelectFork` and `--fork-url` flag

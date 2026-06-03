@@ -74,7 +74,7 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
     /// @notice Minimum price limit for swaps
     uint160 private constant MIN_PRICE_LIMIT = TickMath.MIN_SQRT_PRICE + 1;
 
-    /// @notice The LineaDAT token address — used for the self-launch edge case in `_processFees`.
+    /// @notice The LineaDAT token address - used for the self-launch edge case in `_processFees`.
     /// @dev When `collection == lineaDATAddress`, the 10% LineaDAT-burn share is redirected to feeAddress
     ///      because the strategy can't recursively buy-and-burn its own token through itself.
     ///      For all other strategies (future tokens on Linea), the 10% is sent to factory for ETH→LineaDAT swap → 0xdead.
@@ -304,7 +304,7 @@ contract LineaDATHook is BaseHook, ReentrancyGuard {
         }
 
         // Get token1 from the pool key and store its deployment timestamp.
-        // If a future scheduledLaunchTime is set, use it — that becomes the start of the
+        // If a future scheduledLaunchTime is set, use it - that becomes the start of the
         // buy-fee decay clock AND the trading-open gate (enforced in _afterSwap).
         address collection = Currency.unwrap(key.currency1);
         uint256 t = scheduledLaunchTime > block.timestamp ? scheduledLaunchTime : block.timestamp;

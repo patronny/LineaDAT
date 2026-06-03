@@ -1,6 +1,6 @@
-# 20. WBTCSTR — Анатомия ERC20Strategy v3 (наш основной прототип)
+# 20. WBTCSTR - Анатомия ERC20Strategy v3 (наш основной прототип)
 
-Глубокий разбор `wBTCStrategy` на Ethereum mainnet. Это **прямой прототип LineaDAT** — мы форкаем v3-сурсы с MIT-атрибуцией, переcalibrated под Linea. Все факты ниже подтверждены RPC-вызовами через `https://eth.drpc.org` и сырыми receipt'ами / call-trace'ами в [`research/raw-rpc-data/`](../research/raw-rpc-data/) (2026-05-01).
+Глубокий разбор `wBTCStrategy` на Ethereum mainnet. Это **прямой прототип LineaDAT** - мы форкаем v3-сурсы с MIT-атрибуцией, переcalibrated под Linea. Все факты ниже подтверждены RPC-вызовами через `https://eth.drpc.org` и сырыми receipt'ами / call-trace'ами в [`research/raw-rpc-data/`](../research/raw-rpc-data/) (2026-05-01).
 
 ## 1. Адреса контрактов
 
@@ -22,7 +22,7 @@
 | **PNKSTR burn target** | `0xc50673edb3a7b94e8cad8a7d4e0cd68864e33edf` | TokenWorks PunkStrategy |
 | **Owner** | `0x019817ad02a31b990433542097be29d97613e8cb` | EOA Adam Lizek, **НЕ renounced** на 01.05.2026 |
 | **Default `feeAddress` в hook** | `0x23ddfb0cc40682ad90bd4269a602141b7e481c5a` | EOA, получил 0.2 ETH из launch fee, **trade fees НЕ получает** (см. п.8) |
-| **Burn address** | `0x000000000000000000000000000000000000dEaD` | — |
+| **Burn address** | `0x000000000000000000000000000000000000dEaD` | - |
 
 ## 2. Launch (точные данные RPC)
 
@@ -39,9 +39,9 @@
 ## 3. PoolKey wBTCStrategy/ETH в Uniswap v4
 
 ```
-currency0    = 0x0000000000000000000000000000000000000000  (native ETH — sentinel)
+currency0    = 0x0000000000000000000000000000000000000000  (native ETH - sentinel)
 currency1    = 0x7af2a142c3486a9726791098e6415b768513e363  (WBTCSTR)
-fee          = 0x800000  (DYNAMIC_FEE_FLAG — fee рассчитывается хуком)
+fee          = 0x800000  (DYNAMIC_FEE_FLAG - fee рассчитывается хуком)
 tickSpacing  = 60
 hooks        = 0x9f8f375b2d246da6be816b453f13d43d8240a444
 ```
@@ -67,11 +67,11 @@ hooks        = 0x9f8f375b2d246da6be816b453f13d43d8240a444
 | Reserves token1 (WBTCSTR) | **≈ 999 999 999.999 WBTCSTR** (весь supply минус 558 wei на rounding) |
 | LP-NFT (PositionManager v4) tokenId | **132 829** → minted to `0x0…dEaD` ⇒ **залочено навсегда** |
 
-Pool — **bonding-curve в одну сторону**: первый покупатель приходит с ETH, забирает WBTCSTR, цена идёт вверх по концентрированной кривой. ETH в pool впервые попадает только через swap.
+Pool - **bonding-curve в одну сторону**: первый покупатель приходит с ETH, забирает WBTCSTR, цена идёт вверх по концентрированной кривой. ETH в pool впервые попадает только через swap.
 
 ## 5. Pattern: ERC1967 + Solady LibClone + immutable args
 
-WBTCSTR — **minimal proxy clone** (Solady `LibClone` с ERC1967 storage slot). Bytecode proxy (121 байт) + 60 байт immutable args:
+WBTCSTR - **minimal proxy clone** (Solady `LibClone` с ERC1967 storage slot). Bytecode proxy (121 байт) + 60 байт immutable args:
 
 ```
 363d3d373d3d363d7f360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc545af43d6000803e6038573d6000fd5b3d6000f3
@@ -97,10 +97,10 @@ Layout задан `BaseStrategy` в v3.
 | 8 | `0x01` | **1** | `twapDelayInBlocks` |
 | 9 | `0x0173eecc` | 24 374 476 | `lastTwapBlock` |
 | 10 | `0x017c9613` | 24 942 099 | `lastBuyBlock` |
-| 11 | mapping | — | `isDistributor` |
+| 11 | mapping | - | `isDistributor` |
 | 12 | `0x0` | zeroAddr | `globalDistributor` (mainnet uses `GLOBAL_DISTRIBUTION_HANDLER` константу) |
 
-**Storage at launch block (verified `eth_getStorageAt(proxy, slot, 0x171b310)`):** `currentFees=0`, `lastBuyBlock=24228624` (записан в `__BaseStrategy_init`), `lastTwapBlock=0`, остальное — defaults.
+**Storage at launch block (verified `eth_getStorageAt(proxy, slot, 0x171b310)`):** `currentFees=0`, `lastBuyBlock=24228624` (записан в `__BaseStrategy_init`), `lastTwapBlock=0`, остальное - defaults.
 
 ## 7. Активированные Uniswap v4 hook flags
 
@@ -163,7 +163,7 @@ INFTStrategy(collection).addFees{value: depositAmount}();
 
 PNKSTR-burn механизм: factory получает ETH через `forceSafeTransferETH`, на её стороне есть свой роутинг ETH→PNKSTR через V4 → `0xdead`.
 
-**Для LineaDAT этот блок переименовываем** в LineaDAT-burn, с edge-case: пока `collection == LineaDAT_ADDRESS` — `lineaDATBurnAmount` redirected в `feeAddress` ⇒ эффективно **80/20** на самом $LINEADAT. Для будущих strategies — нормальный 80/10/10 split (см. [`50-lineadat-spec.md`](50-lineadat-spec.md)).
+**Для LineaDAT этот блок переименовываем** в LineaDAT-burn, с edge-case: пока `collection == LineaDAT_ADDRESS` - `lineaDATBurnAmount` redirected в `feeAddress` ⇒ эффективно **80/20** на самом $LINEADAT. Для будущих strategies - нормальный 80/10/10 split (см. [`50-lineadat-spec.md`](50-lineadat-spec.md)).
 
 ## 9. Конструктор хука v3
 
@@ -176,7 +176,7 @@ constructor(
 )
 ```
 
-В LineaDAT заменим параметр `_punkStrategy` на `_lineaDATAddress` — но смысл тот же (адрес токена, чьи проценты идут в buy-and-burn).
+В LineaDAT заменим параметр `_punkStrategy` на `_lineaDATAddress` - но смысл тот же (адрес токена, чьи проценты идут в buy-and-burn).
 
 ## 10. Flywheel: что реально происходит
 
@@ -184,10 +184,10 @@ constructor(
 
 Источник: [`research/tokenworks-hook/ERC20StrategyHook.sol:290-354`](../research/tokenworks-hook/ERC20StrategyHook.sol).
 
-1. **Запрет ExactOutput.** Если `params.amountSpecified > 0` — `revert ExactOutputNotAllowed`. Только ExactInput.
+1. **Запрет ExactOutput.** Если `params.amountSpecified > 0` - `revert ExactOutputNotAllowed`. Только ExactInput.
 2. **Выбор валюты fee.** `specifiedTokenIs0 = (amountSpecified < 0) == zeroForOne`. По итогу:
-   - **Buy (ETH→WBTCSTR)**: fee удерживается **в WBTCSTR (output side)**, потом тут же `_swapToEth(key, feeAmount)` свопает их обратно в ETH через **тот же pool** (`PoolManager.swap` с `zeroForOne=false` и `MAX_PRICE_LIMIT`). Это «двойной свап» — пользователь оплачивает price-impact дважды.
-   - **Sell (WBTCSTR→ETH)**: fee **в ETH сразу** — без re-swap.
+   - **Buy (ETH→WBTCSTR)**: fee удерживается **в WBTCSTR (output side)**, потом тут же `_swapToEth(key, feeAmount)` свопает их обратно в ETH через **тот же pool** (`PoolManager.swap` с `zeroForOne=false` и `MAX_PRICE_LIMIT`). Это «двойной свап» - пользователь оплачивает price-impact дважды.
+   - **Sell (WBTCSTR→ETH)**: fee **в ETH сразу** - без re-swap.
 3. **Динамический fee bps** (`calculateFee`):
    - Sell: всегда **`DEFAULT_FEE = 1000` bps = 10.0%**.
    - Buy: стартовая ставка **`STARTING_BUY_FEE = 9900` bps = 99.0%**, падает на **100 bps в минуту** (`feeReductions = minutesPassed * 100`), пока не достигнет 10%. Время до плато = **(9900−1000)/100 = 89 минут**.
@@ -224,7 +224,7 @@ getMaxPriceForBuy() = (block.number - lastBuyBlock + 1) * buyIncrement
 
 `buyIncrement = 0.1 ETH/блок` для WBTCSTR (slot 0). При block-time 12s на mainnet потолок растёт со скоростью **0.5 ETH/мин = 30 ETH/час**.
 
-**Bot-reward тут НЕТ.** Стимул бота — разница между `availableFunds()` и рыночной ценой `bagSize` wBTC.
+**Bot-reward тут НЕТ.** Стимул бота - разница между `availableFunds()` и рыночной ценой `bagSize` wBTC.
 
 ### 10.3 Treasury-side: bag-sell (`sellTokens` в proxy)
 
@@ -240,7 +240,7 @@ function sellTokens(uint256 bagId) external payable nonReentrant {
 }
 ```
 
-P2P-оффер с фиксированной ценой `listPrice = paid × 1.2`. Buyer должен прислать **ровно** `salePrice` ETH (не больше, не меньше — иначе `PriceTooLow`).
+P2P-оффер с фиксированной ценой `listPrice = paid × 1.2`. Buyer должен прислать **ровно** `salePrice` ETH (не больше, не меньше - иначе `PriceTooLow`).
 
 ETH с продаж → отдельный bucket `ethToTwap` (важная инвариант: deposited fees → bag-buys, bag-sales → buy-and-burn).
 
@@ -346,15 +346,15 @@ lib/solady/* (ReentrancyGuard, SafeTransferLib)
 Запросы выполнены `2026-05-01` через `https://eth.drpc.org`:
 
 ```bash
-# 1. Launch block — bisect по eth_getCode(proxy, block) → 24228624 (0x171b310)
+# 1. Launch block - bisect по eth_getCode(proxy, block) → 24228624 (0x171b310)
 # 2. eth_getTransactionByHash(0xd444a9db...) → from=0xf748879edbe..., value=1.0 ETH
 # 3. eth_getTransactionReceipt(0xd444a9db...) → 12 logs включая:
-#    - log[1]  ERC20.Transfer(from=0, to=factory, 1B WBTCSTR)        — initial mint
-#    - log[3]  Permit2.Approval(factory, WBTCSTR, PositionManager)    — для seed
+#    - log[1]  ERC20.Transfer(from=0, to=factory, 1B WBTCSTR)        - initial mint
+#    - log[3]  Permit2.Approval(factory, WBTCSTR, PositionManager)    - для seed
 #    - log[4]  PoolManager.Initialize(...) sqrtPriceX96=5.01e32, tick=+175052
-#    - log[5]  PositionManager.Transfer(0 → 0xdead, tokenId=132829)   — LP NFT в dead
+#    - log[5]  PositionManager.Transfer(0 → 0xdead, tokenId=132829)   - LP NFT в dead
 #    - log[6]  PoolManager.ModifyLiquidity(tl=-887220, tu=+175020, L=1.58e23)
-#    - log[8]  ERC20.Transfer(factory → PoolManager, 1B-558 WBTCSTR)  — seed token
+#    - log[8]  ERC20.Transfer(factory → PoolManager, 1B-558 WBTCSTR)  - seed token
 # 4. debug_traceTransaction(0xd444a9db...) → 1.0 ETH split: 0.8 → ops, 0.2 → feeAddress
 # 5. eth_getStorageAt(proxy, 0..10, latest) → подтверждены все значения slots в п.6
 # 6. eth_getStorageAt(hook, keccak256(WBTCSTR ‖ 1)) = 1768341623 (deploymentTime)
@@ -362,7 +362,7 @@ lib/solady/* (ReentrancyGuard, SafeTransferLib)
 # 8. eth_getStorageAt(hook, 0x0) = 0x23ddfb0c...e481c5a (default feeAddress)
 ```
 
-Сырые данные — в [`research/raw-rpc-data/wbtcstr-launch-receipt.json`](../research/raw-rpc-data/wbtcstr-launch-receipt.json) и [`research/raw-rpc-data/wbtcstr-launch-calltrace.json`](../research/raw-rpc-data/wbtcstr-launch-calltrace.json).
+Сырые данные - в [`research/raw-rpc-data/wbtcstr-launch-receipt.json`](../research/raw-rpc-data/wbtcstr-launch-receipt.json) и [`research/raw-rpc-data/wbtcstr-launch-calltrace.json`](../research/raw-rpc-data/wbtcstr-launch-calltrace.json).
 
 ## 15. Etherscan / Sourcify ссылки
 

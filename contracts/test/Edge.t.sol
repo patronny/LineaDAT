@@ -97,7 +97,7 @@ contract EdgeTest is BaseTest {
         vm.prank(owner);
         strategy.setDistributor(alice, true);
 
-        // factory wants to send LineaDAT to alice — but factory is not a distributor by default,
+        // factory wants to send LineaDAT to alice - but factory is not a distributor by default,
         // so unless globalDistributor is set, transfer from factory → alice would fail.
         // Test: alice transfers to bob freely (alice is whitelisted distributor).
         // First need alice to have tokens: factory transfer to alice through allowance.

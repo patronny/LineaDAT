@@ -1,4 +1,4 @@
-// Subset of LineaDATHook ABI — only the Trade event Ponder indexes.
+// Subset of LineaDATHook ABI - only the Trade event Ponder indexes.
 // Keep in sync with frontend/src/lib/abis/swapper.ts (hookAbi) and contracts/src/LineaDATHook.sol.
 export const hookAbi = [
   {

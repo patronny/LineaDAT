@@ -48,3 +48,15 @@ lcov.info
 # Local UI test artifacts (Playwright screenshots from lineastr-ui-tester subagent)
 ui-test/
 .playwright-mcp/
+.vercel
+
+# off-chain bot strategy lives in the private repo patronny/lineadat-keeper (kept out of this repo so it can be open-sourced without leaking the bot)
+automation/keeper/
+
+# Internal ops notes + local scratch - kept OUT of the public repo
+obsidian/
+REHEARSAL-RUNBOOK.md
+CLAUDE.md
+.ui-test-shots/
+# root-level scratch screenshots (UI/design captures); real assets live under frontend/public/
+/*.png

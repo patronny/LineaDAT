@@ -53,7 +53,7 @@ The GraphQL endpoint is then available at
 
 | Var | Required | Notes |
 |---|---|---|
-| `STRATEGY_ADDRESS` | yes | LineaDAT strategy proxy on Base Sepolia (deployed contract still has the legacy LINEASTR symbol on testnet — see Step 7) |
+| `STRATEGY_ADDRESS` | yes | LineaDAT strategy proxy on Base Sepolia (deployed contract still has the legacy LINEASTR symbol on testnet - see Step 7) |
 | `HOOK_ADDRESS` | yes | Uniswap v4 hook contract |
 | `START_BLOCK` | yes | Block at or before strategy proxy deploy |
 | `PONDER_RPC_URL_84532` | yes (in prod) | Base Sepolia RPC; default `https://sepolia.base.org` (low rate limits) |

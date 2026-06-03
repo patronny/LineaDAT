@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 
 import {LineaDATStrategy} from "../src/LineaDATStrategy.sol";
 
-/// @notice Phase 3 testnet helper — feed currentFees on the strategy from the deployer EOA (acting as hook).
+/// @notice Phase 3 testnet helper - feed currentFees on the strategy from the deployer EOA (acting as hook).
 ///
 /// Useful for keeping bot rounds productive during testnet observation. Run periodically (every few hours)
 /// to simulate organic swap-fee distribution.

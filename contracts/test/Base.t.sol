@@ -11,7 +11,7 @@ import {ILineaDATStrategy} from "../src/Interfaces.sol";
 
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-/// @notice Mock $LINEA — minimal Solady ERC20, 18 decimals, large supply (mimics canonical Linea L2 token).
+/// @notice Mock $LINEA - minimal Solady ERC20, 18 decimals, large supply (mimics canonical Linea L2 token).
 contract MockLINEA is ERC20 {
     function name() public pure override returns (string memory) {
         return "Linea";
@@ -26,14 +26,14 @@ contract MockLINEA is ERC20 {
     }
 }
 
-/// @notice Mock PoolManager — only used as immutable arg in proxy bytecode. Strategy doesn't actually call into it
+/// @notice Mock PoolManager - only used as immutable arg in proxy bytecode. Strategy doesn't actually call into it
 /// during unit tests because we use the test contract as the "hook" (msg.sender == hookAddress check).
 contract MockPoolManager {
     fallback() external payable {}
     receive() external payable {}
 }
 
-/// @notice Mock UniversalRouter — strategy proxy holds it as an immutable arg. Not invoked during unit tests
+/// @notice Mock UniversalRouter - strategy proxy holds it as an immutable arg. Not invoked during unit tests
 /// (only invoked from BaseStrategy._buyAndBurnTokens during processTokenTwap, which we test separately).
 contract MockUniversalRouter {
     fallback() external payable {}

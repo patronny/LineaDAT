@@ -1,7 +1,9 @@
 # Ponder indexer for the LineaDAT contracts. Lives next to the keeper as a
 # separate Fly app (independent scaling + restart cycles + memory).
-# NOTE: Fly app id `lineastr-indexer` kept for now to avoid live data migration;
-# rename happens in Step 8 of the LINEASTR -> LineaDAT brand cutover.
+# NOTE: Fly app id `lineastr-indexer` kept across the LINEASTR -> LineaDAT brand
+# cutover (Phase 3, 2026-05-05) to preserve the live GraphQL endpoint URL and
+# avoid pglite data migration. Rename to `lineadat-indexer` is deferred to the
+# Phase 4 mainnet (Linea) cutover.
 
 app = 'lineastr-indexer'
 primary_region = 'fra'
@@ -16,8 +18,8 @@ primary_region = 'fra'
   CHAIN_NAME = 'base-sepolia'
   DATABASE_SCHEMA = 'public'
   PONDER_DATABASE_DIRECTORY = '/data/pglite'
-  # PONDER_RPC_URL_84532 — set via `fly secrets set` (Alchemy/Infura URL preferred).
-  # STRATEGY_ADDRESS, HOOK_ADDRESS, START_BLOCK — set via `fly secrets set`.
+  # PONDER_RPC_URL_84532 - set via `fly secrets set` (Alchemy/Infura URL preferred).
+  # STRATEGY_ADDRESS, HOOK_ADDRESS, START_BLOCK - set via `fly secrets set`.
 
 [http_service]
   internal_port = 42069
@@ -35,7 +37,11 @@ primary_region = 'fra'
   [[http_service.checks]]
     interval = '30s'
     timeout = '5s'
-    grace_period = '60s'
+    # Ponder doesn't open the HTTP port until initial historical sync finishes.
+    # On a cold cache (or after RPC swap that invalidates the cached state) sync
+    # can take 5-10 min. 60s grace was killing the machine mid-sync (crash loop
+    # observed 2026-05-08 after publicnode RPC swap). 15min covers worst-case.
+    grace_period = '15m'
     method = 'GET'
     path = '/healthz'
 
@@ -49,4 +55,6 @@ primary_region = 'fra'
 [[vm]]
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 512
+  # 512 MB OOM-killed during Ponder initial sync (~2.5 min in) on 2026-05-08.
+  # Ponder + pglite + Node.js loads chunked block ranges in memory; 1 GB gives headroom.
+  memory_mb = 1024

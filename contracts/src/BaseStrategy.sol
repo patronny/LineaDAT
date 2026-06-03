@@ -61,7 +61,7 @@ abstract contract BaseStrategy is
     /// @notice Dead address for burning tokens
     address public constant DEAD_ADDRESS =
         0x000000000000000000000000000000000000dEaD;
-    /// @notice Address of the Global Distribution Handler (Ethereum mainnet only — Linea uses storage var)
+    /// @notice Address of the Global Distribution Handler (Ethereum mainnet only - Linea uses storage var)
     /// @dev Set to address(0) for LineaDAT fork; on Linea the fallback in `_globalDistributor()` reads from storage `globalDistributor`.
     address public constant GLOBAL_DISTRIBUTION_HANDLER = address(0);
     /// @notice ETH amount increment for maximum buy price calculation
@@ -383,12 +383,17 @@ abstract contract BaseStrategy is
 
     /// @notice Buys tokens with ETH and burns them by sending to dead address
     /// @param amountIn The amount of ETH to spend on tokens that will be burned
-    /// @dev Creates a pool key and swaps ETH for tokens, sending tokens to dead address
+    /// @dev Creates a pool key and swaps ETH for tokens, sending tokens to dead address.
+    ///      Fee MUST be 0x800000 (DYNAMIC_FEE_FLAG) to match the actual pool seeded by
+    ///      LineaDATSeeder/Factory - fee is part of the v4 poolId hash, so fee=0 would
+    ///      target a different (non-existent) pool. Inherited fee=0 from upstream v3 was
+    ///      a discrepancy with the seeded pool config; this fix is defense-in-depth in case
+    ///      LineaDATStrategy.processTokenTwap override ever gets removed or bypassed.
     function _buyAndBurnTokens(uint256 amountIn) internal {
         PoolKey memory key = PoolKey(
             Currency.wrap(address(0)),
             Currency.wrap(address(this)),
-            0,
+            0x800000,
             60,
             IHooks(hookAddress)
         );

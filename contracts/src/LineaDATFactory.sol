@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// LineaDATFactory — minimal owner-only factory for LineaDAT strategy deployments on Linea L2.
+// LineaDATFactory - minimal owner-only factory for LineaDAT strategy deployments on Linea L2.
 // Inspired by TokenWorks ERC20StrategyFactory pattern (MIT) but trimmed: no permissionless launchpad,
 // no NFT/ERC-1155 deploy paths, no recursive strategies. Owner deploys LineaDAT first, then optionally
 // future tokens that share the same hook + factory + buy-and-burn LineaDAT mechanic.
@@ -19,7 +19,7 @@ import {IUniswapV4Router04} from "v4-router/interfaces/IUniswapV4Router04.sol";
 
 import {ILineaDATStrategy, ILineaDATFactory} from "./Interfaces.sol";
 
-/// @title LineaDATFactory — deploy + register LineaDAT-family strategy proxies
+/// @title LineaDATFactory - deploy + register LineaDAT-family strategy proxies
 /// @notice Owner-only. LineaDAT (the self-launch token) MUST be deployed first; subsequent strategies
 ///         use the same hook and pay 10% of trade fees back as buy-and-burn LineaDAT (handled in hook).
 contract LineaDATFactory is Ownable, ReentrancyGuard {
@@ -45,7 +45,7 @@ contract LineaDATFactory is Ownable, ReentrancyGuard {
     /// @notice Default hook address for new strategies (CREATE2-mined)
     address public hookAddress;
 
-    /// @notice Address of the LineaDAT token itself — set on the first call to `deployStrategy`.
+    /// @notice Address of the LineaDAT token itself - set on the first call to `deployStrategy`.
     ///         Used by the hook to detect the self-launch edge case in `_processFees`.
     address public lineaDATAddress;
 
@@ -61,7 +61,7 @@ contract LineaDATFactory is Ownable, ReentrancyGuard {
     /// @notice Whether `deployStrategy` is permitted (can be disabled by owner once LineaDAT ecosystem is mature)
     bool public launchEnabled = true;
 
-    /// @notice Whitelist of authorized launcher addresses (optional — only used if owner enables)
+    /// @notice Whitelist of authorized launcher addresses (optional - only used if owner enables)
     mapping(address => bool) public authorizedLaunchers;
 
     /* ™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™™ */
@@ -122,10 +122,13 @@ contract LineaDATFactory is Ownable, ReentrancyGuard {
     /// @notice TESTNET-ONLY hook setter that accepts any non-zero address (including EOAs).
     /// @dev Used in Phase 3 (Base Sepolia) where the deployer EOA acts as a stand-in for the real
     ///      CREATE2-mined LineaDATHook. The hook contract itself is not needed because we don't
-    ///      run a real Uniswap v4 pool on testnet — strategy P2P mechanics (buyTokens, sellTokens)
+    ///      run a real Uniswap v4 pool on testnet - strategy P2P mechanics (buyTokens, sellTokens)
     ///      work without a pool. Phase 4 (Linea mainnet) MUST use `updateHookAddress` with a real
     ///      hook deployed via CREATE2.
     function updateHookAddressUnchecked(address _hook) external onlyOwner returns (address) {
+        // Mainnet (Linea, 59144) MUST use the validated `updateHookAddress` with a real
+        // CREATE2-mined hook; this testnet stand-in setter is disabled there.
+        require(block.chainid != 59144, "Unchecked hook setter disabled on Linea mainnet");
         if (_hook == address(0)) revert InvalidHookAddress();
         hookAddress = _hook;
         emit HookAddressSet(_hook);
@@ -182,7 +185,7 @@ contract LineaDATFactory is Ownable, ReentrancyGuard {
         tokenToStrategy[_token] = strategy;
         startegyToToken[strategy] = _token;
 
-        // First deploy = LineaDAT self-launch — record lineaDATAddress for hook self-launch detection
+        // First deploy = LineaDAT self-launch - record lineaDATAddress for hook self-launch detection
         if (lineaDATAddress == address(0)) {
             lineaDATAddress = strategy;
             emit LineaDATAddressSet(strategy);
@@ -224,12 +227,12 @@ contract LineaDATFactory is Ownable, ReentrancyGuard {
     /// @dev On the LineaDAT self-launch the hook redirects this share to feeAddress instead, so this
     ///      function is only ever invoked from future strategies' fee processing.
     receive() external payable {
-        // Anyone can also send ETH (e.g. donation) — accept silently
+        // Anyone can also send ETH (e.g. donation) - accept silently
     }
 
     /// @notice Buy LineaDAT with `amountIn` ETH from the LineaDAT/ETH pool and send to dead address.
     /// @dev Callable by anyone once `lineaDATAddress` is set; intended to be triggered periodically by a
-    ///      keeper (or paid 0.5% reward via a separate mechanism — out of scope for v1).
+    ///      keeper (or paid 0.5% reward via a separate mechanism - out of scope for v1).
     /// @param amountIn Amount of ETH from this contract's balance to spend
     function buyAndBurnLineaDAT(uint256 amountIn) external nonReentrant returns (uint256 burned) {
         if (lineaDATAddress == address(0)) revert LineaDATNotSet();

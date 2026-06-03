@@ -1,4 +1,4 @@
-# Phase 3 — Base Sepolia Testnet Deployment Runbook
+# Phase 3 - Base Sepolia Testnet Deployment Runbook
 
 **Дата:** 2026-05-01
 **Статус:** Готов к деплою (deploy script успешно протестирован на Anvil fork Base Sepolia)
@@ -9,7 +9,7 @@
 
 ## Что делает Phase 3
 
-Phase 3 — это live валидация LineaDAT + бота на публичном тестнете (Base Sepolia, ~7 дней). Цель:
+Phase 3 - это live валидация LineaDAT + бота на публичном тестнете (Base Sepolia, ~7 дней). Цель:
 
 1. Подтвердить, что LineaDATStrategy корректно работает в реальной L2-среде (block timing, gas, sequencer ordering)
 2. Подтвердить, что LineaDATBot успешно крутит buyTokens / sellTokens циклы под live keeper trigger'ом (cron-job.org / GitHub Actions)
@@ -21,18 +21,18 @@ Phase 3 — это live валидация LineaDAT + бота на публич
 ## Scope decisions (зафиксированы для Phase 3)
 
 **Деплоится:**
-- ✅ `MockTLINEA` — testnet stub для $LINEA (faucet-enabled ERC20)
+- ✅ `MockTLINEA` - testnet stub для $LINEA (faucet-enabled ERC20)
 - ✅ `LineaDATStrategy` impl + proxy через `LineaDATFactory`
 - ✅ `LineaDATBot` (multicall keeper-bot)
 - ✅ Owner/keeper/feeAddress настраиваются через env vars
 
 **НЕ деплоится в Phase 3 (отложено до Phase 4 mainnet):**
-- ❌ CREATE2-mined hook (`LineaDATHook`) — вместо него используется deployer EOA как hookAddress
+- ❌ CREATE2-mined hook (`LineaDATHook`) - вместо него используется deployer EOA как hookAddress
 - ❌ Uniswap v4 pool init (требует hook с правильными permission flags)
 - ❌ LP-NFT seed (требует pool)
-- ❌ `processTokenTwap` execution (требует pool для swap'ов — bot's `_tryTwap` поймает revert через try/catch и продолжит)
+- ❌ `processTokenTwap` execution (требует pool для swap'ов - bot's `_tryTwap` поймает revert через try/catch и продолжит)
 
-**Почему такой scope?** Phase 3 main goal — bot validation under live network conditions. P2P `buyTokens` / `sellTokens` не зависят от Uniswap pool — они работают через `currentFees` и `onSale` state. Достаточно, чтобы deployer EOA мог сидить fees через `strategy.addFees{value:X}()` (он же hookAddress). Phase 4 mainnet добавит full hook + pool init.
+**Почему такой scope?** Phase 3 main goal - bot validation under live network conditions. P2P `buyTokens` / `sellTokens` не зависят от Uniswap pool - они работают через `currentFees` и `onSale` state. Достаточно, чтобы deployer EOA мог сидить fees через `strategy.addFees{value:X}()` (он же hookAddress). Phase 4 mainnet добавит full hook + pool init.
 
 ---
 
@@ -58,7 +58,7 @@ Phase 3 — это live валидация LineaDAT + бота на публич
 
 ## Deploy sequence
 
-### Step 1 — Запустить deploy script
+### Step 1 - Запустить deploy script
 
 ```bash
 cd contracts/
@@ -74,7 +74,7 @@ forge script script/DeployBaseSepolia.s.sol:DeployBaseSepolia \
 
 **Estimated gas:** ~8.4M total = ~0.0001 ETH at typical Base Sepolia gas prices (~0.011 gwei). Деплой стоит копейки.
 
-### Step 2 — Сохранить адреса
+### Step 2 - Сохранить адреса
 
 После успешного деплоя forge сохранит broadcast в `contracts/broadcast/DeployBaseSepolia.s.sol/84532/run-latest.json`. Извлеки 5 адресов:
 
@@ -94,7 +94,7 @@ NEXT_PUBLIC_STRATEGY_ADDRESS=0x...
 NEXT_PUBLIC_BOT_ADDRESS=0x...
 ```
 
-### Step 3 — Отправить ETH на бота для sellTokens
+### Step 3 - Отправить ETH на бота для sellTokens
 
 Бот тратит ETH на `sellTokens` (платит listPrice бэкам). Owner отправляет 5 ETH на адрес бота:
 
@@ -102,7 +102,7 @@ NEXT_PUBLIC_BOT_ADDRESS=0x...
 cast send $BOT --value 5ether --rpc-url $BASE_SEPOLIA_RPC --private-key $PRIVATE_KEY
 ```
 
-### Step 4 — Verify на Basescan (Base Sepolia explorer)
+### Step 4 - Verify на Basescan (Base Sepolia explorer)
 
 ```bash
 forge verify-contract \
@@ -115,9 +115,9 @@ forge verify-contract \
 
 (Опционально, но желательно для прозрачности frontend.)
 
-### Step 5 — Настроить keeper cron
+### Step 5 - Настроить keeper cron
 
-Вариант A — **GitHub Actions** (рекомендован):
+Вариант A - **GitHub Actions** (рекомендован):
 
 Создать `.github/workflows/keeper.yml`:
 
@@ -146,11 +146,11 @@ jobs:
 
 Secrets needed: `BASE_SEPOLIA_RPC`, `KEEPER_PK`, `BOT_ADDRESS`.
 
-Вариант B — **cron-job.org**:
+Вариант B - **cron-job.org**:
 
-cron-job.org делает HTTP requests, не tx, поэтому надо поднять простой relay-сервер (например, Vercel serverless function), который при HTTP-запросе вызывает `bot.executeRound()`. Усложнение — лучше использовать вариант A.
+cron-job.org делает HTTP requests, не tx, поэтому надо поднять простой relay-сервер (например, Vercel serverless function), который при HTTP-запросе вызывает `bot.executeRound()`. Усложнение - лучше использовать вариант A.
 
-### Step 6 — Периодически сидить fees
+### Step 6 - Периодически сидить fees
 
 Чтобы бот имел работу (`availableFunds > 0`), кто-то должен пополнять `currentFees`. На testnet это делает deployer EOA через helper-скрипт:
 
@@ -186,4 +186,4 @@ STRATEGY=0x... SEED_AMOUNT=0.05ether \
 4. Transfer LP-NFT → `0x000…dEaD`
 5. Lineascan verification всех контрактов
 6. Покупка домена `on-chaindat.com` (already secured 2026-05-05), deploy frontend на Vercel
-7. Production keeper migration (если testnet keeper стабилен — оставить ту же архитектуру)
+7. Production keeper migration (если testnet keeper стабилен - оставить ту же архитектуру)

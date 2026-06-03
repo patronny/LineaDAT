@@ -1,4 +1,4 @@
-# Phase 2 — Anvil Fork Stress Test Results
+# Phase 2 - Anvil Fork Stress Test Results
 
 **Дата:** 2026-05-01
 **Статус:** ✅ PASS (1000/1000 cycles, all invariants hold)
@@ -11,7 +11,7 @@
 
 Phase 2 стресс-тест запускается на форке Linea mainnet (chainId 59144), деплоит полную LineaDAT-инфраструктуру (factory + impl + proxy + mock pool manager + mock universal router), использует **настоящий $LINEA токен** (`0x1789e0043623282D5DCc7F213d703C6D8BAfBB04`) как underlying, балансы выдаются через forge-std `deal()` cheatcode (write-to-storage bypass).
 
-Прогоняем 1000 рандомных циклов: каждый цикл — `vm.roll(+1..10 blocks)` плюс одна из 4 случайных операций (`addFees` / `buyTokens` / `sellTokens` / `processTokenTwap`-stub). После каждого цикла проверяются инварианты.
+Прогоняем 1000 рандомных циклов: каждый цикл - `vm.roll(+1..10 blocks)` плюс одна из 4 случайных операций (`addFees` / `buyTokens` / `sellTokens` / `processTokenTwap`-stub). После каждого цикла проверяются инварианты.
 
 **Команда запуска:**
 ```bash
@@ -35,7 +35,7 @@ forge test --match-contract StressTest --fork-url https://rpc.linea.build -vv
 | **Total bot gross profit (paid out по buyTokens)** | **65.27 ETH** |
 | **Avg paid per successful buy** | **0.362 ETH** |
 | **Avg time-to-sell (blocks)** | **768** (~38 минут на Linea при 3s/block) |
-| Final totalSupply (LineaDAT) | 1 000 000 000 (без изменений — processTokenTwap stub) |
+| Final totalSupply (LineaDAT) | 1 000 000 000 (без изменений - processTokenTwap stub) |
 | Final currentFees | 0.977 ETH (residual ниже buyIncrement-ramp ceiling) |
 | Final ethToTwap | 44.18 ETH (накоплен с sellTokens, не сожжён в stub) |
 | Final treasury LINEA balance | 12.3M LINEA (82 unsold bags × 150k) |
@@ -67,9 +67,9 @@ forge test --match-contract StressTest --fork-url https://rpc.linea.build -vv
 maxBuy = (block.number - lastBuyBlock + 1) * buyIncrement = N * 0.02 ETH
 ```
 
-Между buy-операциями в среднем проходит ~5.5 блоков (обусловлено `vm.roll(+1..10)` × 1000 циклов / 180 успешных buys). Это даёт maxBuy ceiling ≈ 0.11 ETH на свежий buy. Среднее 0.362 ETH выше mean ceiling — это потому, что некоторые buys случаются после длинных простоев (10..50 блоков без buyTokens), когда `currentFees` накопился из multiple addFees.
+Между buy-операциями в среднем проходит ~5.5 блоков (обусловлено `vm.roll(+1..10)` × 1000 циклов / 180 успешных buys). Это даёт maxBuy ceiling ≈ 0.11 ETH на свежий buy. Среднее 0.362 ETH выше mean ceiling - это потому, что некоторые buys случаются после длинных простоев (10..50 блоков без buyTokens), когда `currentFees` накопился из multiple addFees.
 
-**Ни в одном из 180 успешных buys** не было нарушений: `actualPaid == availableFunds()` всегда выполнялось exactly. Это математически гарантирует, что **никакой бот не может вытащить больше, чем `min(currentFees, ramp ceiling)`** — slow-rug atomic-drain атака невозможна.
+**Ни в одном из 180 успешных buys** не было нарушений: `actualPaid == availableFunds()` всегда выполнялось exactly. Это математически гарантирует, что **никакой бот не может вытащить больше, чем `min(currentFees, ramp ceiling)`** - slow-rug atomic-drain атака невозможна.
 
 ---
 
@@ -97,9 +97,9 @@ maxBuy = (block.number - lastBuyBlock + 1) * buyIncrement = N * 0.02 ETH
 - ✅ Slow-rug ceiling verified
 
 **Out of Phase 2 scope (отложено):**
-- ❌ Реальные swap'ы через настоящий PoolManager — нужен calibrated sqrtPriceX96 init + LP-NFT seed + хук с правильными flag bits. Это Phase 4 mainnet deploy task.
-- ❌ `processTokenTwap` execution — наш `MockUniversalRouter` не возвращает LineaDAT при swap, поэтому `_buyAndBurnTokens` корректно не отработает. Это тестируется отдельно в `Sandwich.t.sol` с controlled mock router.
-- ❌ Multi-block sandwich attack scenarios — Phase 3 testnet validation (Base Sepolia с реальным Uniswap v4).
+- ❌ Реальные swap'ы через настоящий PoolManager - нужен calibrated sqrtPriceX96 init + LP-NFT seed + хук с правильными flag bits. Это Phase 4 mainnet deploy task.
+- ❌ `processTokenTwap` execution - наш `MockUniversalRouter` не возвращает LineaDAT при swap, поэтому `_buyAndBurnTokens` корректно не отработает. Это тестируется отдельно в `Sandwich.t.sol` с controlled mock router.
+- ❌ Multi-block sandwich attack scenarios - Phase 3 testnet validation (Base Sepolia с реальным Uniswap v4).
 
 ---
 

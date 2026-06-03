@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {BaseTest} from "./Base.t.sol";
 import {LineaDATBot, ILineaDATStrategyView} from "../src/LineaDATBot.sol";
 
-/// @notice LineaDATBot test suite — verifies the keeper-bot's atomic round logic, access control,
+/// @notice LineaDATBot test suite - verifies the keeper-bot's atomic round logic, access control,
 /// and configuration knobs. Bot is funded with tLINEA (mocked $LINEA) + ETH and is registered as a
 /// distributor on the strategy so its underlying-token transfers don't get blocked by `_afterTokenTransfer`.
 contract BotTest is BaseTest {
@@ -69,7 +69,7 @@ contract BotTest is BaseTest {
     function test_executeRound_succeedsForKeeper() public {
         vm.prank(keeper);
         bot.executeRound(1);
-        // No assertion — just that it doesn't revert
+        // No assertion - just that it doesn't revert
     }
 
     // =====================================================================================

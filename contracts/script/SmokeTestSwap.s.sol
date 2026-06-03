@@ -11,7 +11,7 @@ import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 
-/// @notice Phase 3.5 — One-shot test swap to verify pool + hook are live.
+/// @notice Phase 3.5 - One-shot test swap to verify pool + hook are live.
 contract SmokeTestSwap is Script {
     address constant POOL_MANAGER = 0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408;
     address constant LINEADAT_PROXY = 0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2;
@@ -50,7 +50,7 @@ contract SmokeTestSwap is Script {
         proxy.setDistributor(deployer, true);
         console.log("[2] setDistributor(deployer, true)");
 
-        // Mark swapper as distributor too — outbound transfer (swapper -> poolManager) for the ETH leg
+        // Mark swapper as distributor too - outbound transfer (swapper -> poolManager) for the ETH leg
         // is just NATIVE so no token transfer; but the receive of LineaDAT by swapper before forwarding to deployer
         // could trip the check. take() goes directly to recipient, so we should be ok, but mark anyway as belt-and-suspenders.
         proxy.setDistributor(address(swapper), true);

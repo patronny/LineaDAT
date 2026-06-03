@@ -1,4 +1,4 @@
-# LineaDAT Gelato Web3 Function — Keeper
+# LineaDAT Gelato Web3 Function - Keeper
 
 Replaces the unreliable GitHub Actions cron with Gelato's decentralized keeper
 network. Gelato runs the function on schedule, off-chain checks state, and
@@ -38,7 +38,7 @@ You should see logs of the function reading on-chain state and either returning
 npm run deploy
 ```
 
-The CLI prints an IPFS CID — copy it.
+The CLI prints an IPFS CID - copy it.
 
 ### 4. Create the task on app.gelato.network
 
@@ -48,7 +48,7 @@ The CLI prints an IPFS CID — copy it.
 4. Trigger: **Time-based**, every **30 minutes**
 5. What to execute: **Web3 Function** → paste the IPFS CID from step 3
 6. User args: leave the defaults from `userArgs.json` or override
-7. Pay with: **1Balance** (deposit ~0.05 ETH worth of native gas — covers
+7. Pay with: **1Balance** (deposit ~0.05 ETH worth of native gas - covers
    thousands of executions)
 8. Confirm
 
@@ -71,7 +71,7 @@ exec if:
 else: canExec=false (Gelato does not submit a tx; no gas spent)
 ```
 
-State-aware triggering means we **don't pay gas for no-op runs** — unlike GH
+State-aware triggering means we **don't pay gas for no-op runs** - unlike GH
 Actions which submitted a tx every cron tick. This is the main upgrade.
 
 ## Phase 4 mainnet checklist
@@ -85,5 +85,5 @@ When migrating to Linea:
 5. Test once via "Manually trigger" button on app.gelato.network
 6. Disable the testnet task
 
-The function code itself is chain-agnostic — only `userArgs` and the Gelato
+The function code itself is chain-agnostic - only `userArgs` and the Gelato
 network selection change.

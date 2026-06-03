@@ -8,16 +8,16 @@ import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {ModifyLiquidityParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-/// @notice Local interface — v4-core checkout in lib/ doesn't expose this header.
+/// @notice Local interface - v4-core checkout in lib/ doesn't expose this header.
 interface IUnlockCallback {
     function unlockCallback(bytes calldata data) external returns (bytes memory);
 }
 
-/// @notice Phase 3.5 testnet helper — initializes a Uniswap v4 pool and seeds single-sided liquidity.
+/// @notice Phase 3.5 testnet helper - initializes a Uniswap v4 pool and seeds single-sided liquidity.
 ///
 /// The LP position is owned by THIS contract (no NFT minted, no PositionManager involved).
 /// Since this contract has no removeLiquidity function, the position is permanently locked
-/// — equivalent to "LP-NFT → 0xdead" but without the NFT layer.
+/// - equivalent to "LP-NFT → 0xdead" but without the NFT layer.
 ///
 /// USAGE:
 ///   1. Deploy this contract
@@ -115,7 +115,7 @@ contract LineaDATSeeder is IUnlockCallback {
             }
         }
 
-        // Settle currency1 (LineaDAT — ERC20 transfer from this contract)
+        // Settle currency1 (LineaDAT - ERC20 transfer from this contract)
         if (amount1 < 0) {
             uint256 owed1 = uint256(uint128(-amount1));
             if (ILineaDATTokenLike(Currency.unwrap(data.key.currency1)).balanceOf(address(this)) < owed1) {

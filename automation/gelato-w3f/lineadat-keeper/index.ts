@@ -1,5 +1,5 @@
 /**
- * LineaDAT Keeper — Gelato Web3 Function (W3F)
+ * LineaDAT Keeper - Gelato Web3 Function (W3F)
  *
  * Replaces the GitHub Actions keeper.yml cron with Gelato's reliable
  * decentralized keeper network. Gelato runs this function on schedule (we'll
@@ -28,16 +28,17 @@ const BOT_ABI_FRAGMENT = "function executeRound(uint256 roundId)";
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { multiChainProvider, userArgs, storage } = context;
 
-  // Read userArgs (set on the Gelato dashboard when creating the task)
+  // Read userArgs (set on the Gelato dashboard when creating the task).
+  // Fallbacks point at the canonical Phase 3.5 LineaDAT atomic-launch deployment on Base Sepolia.
   const strategyAddr = (userArgs.strategy as string) ||
-    "0x6ddbC0bF9e8Bb2f8Bd9Dfd27876197340dDc7EB2";
+    "0x615937AE1eB71248DA407F39AcFea9288CF1784F";
   const botAddr = (userArgs.bot as string) ||
-    "0x5CAbfF553d8D7B9564CceE758A22b58c850d23Fc";
+    "0x8FC3c32fd69D714413C1ecD66FA4067b08eE3532";
   const buyThresholdWeiStr = (userArgs.buyThresholdWei as string) ||
     "1000000000000000"; // 0.001 ETH
   const buyThreshold = BigInt(buyThresholdWeiStr);
 
-  // Provider — multiChainProvider.default() returns the chain configured for
+  // Provider - multiChainProvider.default() returns the chain configured for
   // the Gelato task (Base Sepolia chainId 84532 in our case).
   const provider = multiChainProvider.default();
   const strategy = new Contract(strategyAddr, STRATEGY_ABI, provider);
@@ -56,7 +57,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   const lastBagSeen = BigInt(lastBagSeenStr);
   const lastEthToTwapSeen = BigInt(lastEthToTwapSeenStr);
 
-  // Decision logic — exec if any condition holds:
+  // Decision logic - exec if any condition holds:
   //   1. fees ready for a bag buy
   //   2. unsold bag waiting that bot can flip
   //   3. ethToTwap > 0 (TWAP burn pending)

@@ -12,17 +12,17 @@ import {MockPoolManager, MockUniversalRouter} from "./Base.t.sol";
 
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 
-/// @notice Phase 2 stress test — 1000 randomized buy/sell/addFees cycles against a Linea mainnet fork.
+/// @notice Phase 2 stress test - 1000 randomized buy/sell/addFees cycles against a Linea mainnet fork.
 ///
 /// Forks Linea mainnet at the latest block, deploys LineaDATStrategy infrastructure, uses the canonical
 /// `$LINEA` token (`0x1789...BB04`) as the underlying. Test contract is registered as the hook
-/// (bypassing real Uniswap v4 hook flag checks — those are exercised in Initialize.t.sol).
+/// (bypassing real Uniswap v4 hook flag checks - those are exercised in Initialize.t.sol).
 ///
 /// PROPERTY INVARIANTS (checked every cycle):
 ///   1. `availableFunds == min(currentFees, getMaxPriceForBuy)`
 ///   2. `totalSupply` monotonically non-increasing (only burns ever happen)
 ///   3. Treasury `$LINEA` balance monotonically non-decreasing (only inflows: from buyTokens)
-///   4. `currentFees`, `ethToTwap` are uint256 — non-negative by type
+///   4. `currentFees`, `ethToTwap` are uint256 - non-negative by type
 ///   5. After a successful buyTokens: bot's net ETH gain == `availableFunds()` paid out, bag listed at 1.2× paid
 ///   6. After a successful sellTokens(bagId): `ethToTwap` increased by exactly listPrice
 ///
@@ -80,7 +80,7 @@ contract StressTest is Test {
     uint256 internal prevTreasuryLinea;
 
     function setUp() public {
-        // Verify we're on a Linea fork (chainId 59144) — if running locally without fork, skip
+        // Verify we're on a Linea fork (chainId 59144) - if running locally without fork, skip
         if (block.chainid != 59144) {
             console.log("[!] Not on Linea fork - chainId is", block.chainid);
             console.log("[!] Run: forge test --match-contract StressTest --fork-url https://rpc.linea.build");
@@ -132,7 +132,7 @@ contract StressTest is Test {
         vm.deal(address(this), 100_000 ether);
     }
 
-    /// @notice Main stress entry point — 1000 cycles with random action selection.
+    /// @notice Main stress entry point - 1000 cycles with random action selection.
     function test_stress1000Cycles() public {
         for (uint256 i = 0; i < CYCLES; i++) {
             _rollRandomBlocks(i);
@@ -201,7 +201,7 @@ contract StressTest is Test {
             totalBotProfit += actualPaid; // gross profit (before sell-back from buyer)
             totalBuySuccesses++;
         } catch {
-            // Buyer ran out of approved tokens, balance mismatch, or other — fine, just record attempt
+            // Buyer ran out of approved tokens, balance mismatch, or other - fine, just record attempt
         }
     }
 
@@ -267,10 +267,10 @@ contract StressTest is Test {
         prevTotalSupply = currentSupply;
 
         // 3. Treasury LINEA balance monotonically non-decreasing during stress test
-        //    (sellTokens decreases it back to 0 net — but in the AGGREGATE across many bags,
+        //    (sellTokens decreases it back to 0 net - but in the AGGREGATE across many bags,
         //     unsold bags remain in treasury). Strict monotonic only holds between successive
         //     buys/sells of the SAME bag. We track the rolling minimum instead.
-        // SOFT INVARIANT: not asserted here — see _logFinalMetrics for aggregate check.
+        // SOFT INVARIANT: not asserted here - see _logFinalMetrics for aggregate check.
     }
 
     // ================================================================================================
