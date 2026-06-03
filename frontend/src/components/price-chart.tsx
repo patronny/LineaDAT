@@ -14,6 +14,7 @@ import { useSwaps } from "@/hooks/useIndexer";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useEthPrice } from "@/hooks/useEthPrice";
 import { lineastrPriceInEth } from "@/lib/utils";
+import { priceSanityBand, inPriceBand, robustPriceRange } from "@/lib/chart-scale";
 
 /**
  * DexScreener-style price chart fed by the Ponder indexer's `swap` rows (one
@@ -134,19 +135,25 @@ export function PriceChart() {
 
   // ETH-denominated price + per-swap ETH volume, ascending by time, plus a live tail.
   const points = useMemo<Pt[]>(() => {
-    const pts: Pt[] = [];
+    const livePrice = liveSqrt && liveSqrt > 0n ? lineastrPriceInEth(liveSqrt) : 0;
+    const raw: Pt[] = [];
     if (swaps) {
       const asc = [...swaps].sort((a, b) => a.timestamp - b.timestamp);
       for (const s of asc) {
         const priceEth = lineastrPriceInEth(BigInt(s.sqrtPriceX96));
         const volEth = Number(s.ethAmount) / 1e18;
-        if (priceEth > 0) pts.push({ t: s.timestamp, priceEth, volEth: isFinite(volEth) ? volEth : 0 });
+        if (priceEth > 0) raw.push({ t: s.timestamp, priceEth, volEth: isFinite(volEth) ? volEth : 0 });
       }
     }
-    if (liveSqrt && liveSqrt > 0n) {
-      const livePrice = lineastrPriceInEth(liveSqrt);
+    // Drop corrupt multi-order-of-magnitude price spikes (a bad sqrtPriceX96 from
+    // an at-init / low-liquidity / stale read) before they reach the axis - one
+    // such tick would otherwise blow the y-axis open and flatten the real line.
+    // Anchored on the live pool price (ground truth) when available.
+    const band = priceSanityBand(raw.map((p) => p.priceEth), livePrice || undefined);
+    const pts = raw.filter((p) => inPriceBand(p.priceEth, band));
+    if (livePrice > 0) {
       const nowT = Math.floor(Date.now() / 1000);
-      if (livePrice > 0 && (pts.length === 0 || nowT - pts[pts.length - 1].t > 2)) {
+      if (pts.length === 0 || nowT - pts[pts.length - 1].t > 2) {
         pts.push({ t: nowT, priceEth: livePrice, volEth: 0 });
       }
     }
@@ -220,6 +227,10 @@ export function PriceChart() {
   const lineRef = useRef<ISeriesApi<"Line"> | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  // Latest plotted values, read by the series autoscaleInfoProvider (set in the
+  // data effect below, before setData, so the robust range reflects current data).
+  const lineValsRef = useRef<number[]>([]);
+  const candleValsRef = useRef<number[]>([]);
 
   // Create the chart + series once on mount.
   useEffect(() => {
@@ -243,12 +254,21 @@ export function PriceChart() {
     });
     chartRef.current = chart;
 
+    // Robust y-axis: frame on a percentile band with a non-negative floor so a
+    // single corrupt tick can't invert or blow out the scale. Returning null
+    // (no data) lets the library's default autoscale take over.
+    const toAutoscale = (vals: number[]) => {
+      const r = robustPriceRange(vals);
+      return r ? { priceRange: { minValue: r.minValue, maxValue: r.maxValue } } : null;
+    };
+
     const line = chart.addSeries(LineSeries, {
       color: LINE,
       lineWidth: 2,
       priceLineColor: LINE,
       crosshairMarkerBorderColor: LINE,
       crosshairMarkerBackgroundColor: LINE,
+      autoscaleInfoProvider: () => toAutoscale(lineValsRef.current),
     });
     lineRef.current = line;
 
@@ -260,6 +280,7 @@ export function PriceChart() {
       wickUpColor: UP_SOLID,
       wickDownColor: DOWN_SOLID,
       visible: false, // line is the default view; toggled on demand
+      autoscaleInfoProvider: () => toAutoscale(candleValsRef.current),
     });
     candleRef.current = candle;
 
@@ -301,6 +322,10 @@ export function PriceChart() {
   // the line in place without moving the viewport.
   useEffect(() => {
     if (!lineRef.current || !candleRef.current || !volRef.current) return;
+    // Refresh the values the autoscale providers read BEFORE setData triggers a
+    // rescale, so the robust range matches the data being drawn this frame.
+    lineValsRef.current = lineData.map((d) => d.value);
+    candleValsRef.current = candleData.flatMap((d) => [d.low, d.high, d.open, d.close]);
     lineRef.current.setData(lineData);
     candleRef.current.setData(candleData);
     volRef.current.setData(volData);
