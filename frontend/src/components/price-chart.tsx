@@ -134,7 +134,10 @@ export function PriceChart() {
     : 0;
 
   // ETH-denominated price + per-swap ETH volume, ascending by time, plus a live tail.
-  const points = useMemo<Pt[]>(() => {
+  // `swapCount` = points that came from real indexed swaps (the synthetic live tail
+  // does NOT count) - drives the "No trades yet" empty state so a lone live point
+  // never renders as a dead-looking flat line.
+  const { points, swapCount } = useMemo<{ points: Pt[]; swapCount: number }>(() => {
     const livePrice = liveSqrt && liveSqrt > 0n ? lineastrPriceInEth(liveSqrt) : 0;
     const raw: Pt[] = [];
     if (swaps) {
@@ -151,13 +154,14 @@ export function PriceChart() {
     // Anchored on the live pool price (ground truth) when available.
     const band = priceSanityBand(raw.map((p) => p.priceEth), livePrice || undefined);
     const pts = raw.filter((p) => inPriceBand(p.priceEth, band));
+    const swapCount = pts.length;
     if (livePrice > 0) {
       const nowT = Math.floor(Date.now() / 1000);
       if (pts.length === 0 || nowT - pts[pts.length - 1].t > 2) {
         pts.push({ t: nowT, priceEth: livePrice, volEth: 0 });
       }
     }
-    return pts;
+    return { points: pts, swapCount };
   }, [swaps, liveSqrt]);
 
   // Auto-pick a sensible default candle interval from the data span (finest step
@@ -218,8 +222,8 @@ export function PriceChart() {
   const changeColor = up ? UP_SOLID : DOWN_SOLID;
   const totalVol = buckets.reduce((s, b) => s + b.vol, 0);
 
-  const hasData = buckets.length > 0;
-  const rangeEmpty = usable && !loading && points.length > 0 && buckets.length === 0;
+  const hasData = swapCount > 0 && buckets.length > 0;
+  const rangeEmpty = usable && !loading && swapCount > 0 && buckets.length === 0;
 
   // --- lightweight-charts lifecycle ---
   const containerRef = useRef<HTMLDivElement>(null);
@@ -322,14 +326,20 @@ export function PriceChart() {
   // the line in place without moving the viewport.
   useEffect(() => {
     if (!lineRef.current || !candleRef.current || !volRef.current) return;
+    // With no real swap history yet (only the synthetic live tail), draw nothing
+    // and let the "No trades yet" overlay show - a single point renders as a
+    // dead-looking flat line. The header still surfaces the live price.
+    const ld = swapCount > 0 ? lineData : [];
+    const cd = swapCount > 0 ? candleData : [];
+    const vd = swapCount > 0 ? volData : [];
     // Refresh the values the autoscale providers read BEFORE setData triggers a
     // rescale, so the robust range matches the data being drawn this frame.
-    lineValsRef.current = lineData.map((d) => d.value);
-    candleValsRef.current = candleData.flatMap((d) => [d.low, d.high, d.open, d.close]);
-    lineRef.current.setData(lineData);
-    candleRef.current.setData(candleData);
-    volRef.current.setData(volData);
-  }, [lineData, candleData, volData]);
+    lineValsRef.current = ld.map((d) => d.value);
+    candleValsRef.current = cd.flatMap((d) => [d.low, d.high, d.open, d.close]);
+    lineRef.current.setData(ld);
+    candleRef.current.setData(cd);
+    volRef.current.setData(vd);
+  }, [lineData, candleData, volData, swapCount]);
 
   // Fit the data to the full chart width, but only when the x-domain actually
   // changes (user picks an interval/range) or when data first arrives - never on
@@ -453,10 +463,10 @@ export function PriceChart() {
             Live chart unavailable - indexer offline. Trades still settle on-chain.
           </div>
         )}
-        {usable && loading && points.length === 0 && (
+        {usable && loading && swapCount === 0 && (
           <div className="absolute inset-0 rounded-md bg-muted animate-pulse" />
         )}
-        {usable && !loading && points.length === 0 && (
+        {usable && !loading && swapCount === 0 && (
           <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground text-center px-4 pointer-events-none">
             No trades yet. The chart populates after the first swap against the pool.
           </div>
