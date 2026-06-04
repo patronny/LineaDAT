@@ -7,7 +7,7 @@
 | Поле | Значение |
 |---|---|
 | **Token name** | `LineaDAT` |
-| **Token symbol** | **`LineaDAT`** |
+| **Token symbol** | **`LINEADAT`** | (deployed symbol is all-caps; `name` stays `LineaDAT`)
 | **Decimals** | 18 |
 | **Total supply** | 1 000 000 000 × 10¹⁸ |
 | **Underlying** | $LINEA `0x1789e0043623282D5DCc7F213d703C6D8BAfBB04` (canonical L2 token, 18 dec, не fee-on-transfer, не rebase) |
@@ -19,7 +19,7 @@
 | Параметр | Значение | Обоснование |
 |---|---|---|
 | `bagSize` | **150 000 LINEA** = 150 000 × 10¹⁸ | $546 ≈ 0.236 ETH; 1.97% TVL топ-пула, slippage ~2%, см. §6 |
-| `buyIncrement` | **0.02 ETH/блок** = 20 × 10¹⁵ wei | catch-up bagSize ≈ 12 блоков ≈ 36 секунд при Linea 3-сек блоках |
+| `buyIncrement` | **0.005 ETH/блок** = 5 × 10¹⁵ wei (IMMUTABLE, set in initialize) | catch-up bagSize ≈ 47 блоков при Linea ~2-сек блоках; замедлен с 0.02 чтобы растянуть slow-rug ramp |
 | `priceMultiplier` | **1200** (= 1.2× markup) | копия v3, бот зарабатывает 20% премию |
 | `twapIncrement` | **0.05 ETH** = 5 × 10¹⁶ wei | conservative для тонкого пула, поднимаем `setTwapIncrement` руками когда пул вырастет |
 | `twapDelayInBlocks` | **4** (= 12 секунд на Linea) | защита от same-block sandwich MEV; эквивалент mainnet `1×12с` |
@@ -272,8 +272,8 @@ LineaDATStrategy proxy = factory.deployStrategy({
     bagSize:           150_000 * 1e18,                              // 150 000 LINEA
     hook:              minedHookAddress,                            // CREATE2-mined
     tokenName:         "LineaDAT",
-    tokenSymbol:       "LineaDAT",
-    buyIncrement:      0.02 ether,                                  // 2 × 10¹⁶ wei
+    tokenSymbol:       "LINEADAT",
+    buyIncrement:      0.005 ether,                                 // 5 × 10¹⁵ wei (immutable)
     owner:             ownerKeycardEOA
 });
 

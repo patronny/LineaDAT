@@ -4,7 +4,7 @@
 
 ---
 
-# LineaDAT (Phase 3 testnet - текущий код)
+# LineaDAT - архитектура (живёт на Linea mainnet, Phase 4)
 
 **LineaDAT** ($LINEADAT) - ERC-20 strategy token на **Linea L2** с underlying **$LINEA**. Точная архитектурная копия `wBTCStrategy` (ERC20Strategy v3 от TokenWorks, MIT) с минимальными правками: PNKSTR-burn заменён на **LineaDAT-burn** (с edge-case «LineaDAT-burn = feeAddress пока collection == LineaDAT_ADDRESS» - для запуска первого токена), параметры калиброваны под Linea (block-time, ликвидность $LINEA, экономика бота).
 
@@ -16,13 +16,13 @@
 
 | Аспект | wBTCStrategy (прототип v3) | LineaDAT |
 |---|---|---|
-| Сеть | Ethereum mainnet (12s/block) | **Linea L2** (chainId 59144, ~3s/block) |
+| Сеть | Ethereum mainnet (12s/block) | **Linea L2** (chainId 59144, ~2s/block) |
 | Underlying | wBTC `0x2260fac5…c2c599` (8 decimals) | **$LINEA** `0x1789e004…bb04` (18 decimals) |
 | Total supply | 1 000 000 000 × 10¹⁸ | **1 000 000 000 × 10¹⁸** (то же) |
 | Initial pool | single-sided 0 ETH + 1B WBTCSTR | **single-sided 0 ETH + 1B LineaDAT** |
 | Initial FDV | ≈ $100 000 (sqrtPriceX96-derived) | **≈ $100 000** (то же) |
 | `bagSize` | 0.0125 wBTC ≈ $1 250 ≈ 0.54 ETH | **150 000 LINEA** ≈ $546 ≈ 0.236 ETH |
-| `buyIncrement` | 0.1 ETH/блок (mainnet 12s ⇒ 0.5 ETH/мин) | **0.02 ETH/блок** (Linea 3s ⇒ ~0.4 ETH/мин) |
+| `buyIncrement` | 0.1 ETH/блок (mainnet 12s ⇒ 0.5 ETH/мин) | **0.005 ETH/блок** (immutable; замедлен с 0.02, ~0.1-0.15 ETH/мин) |
 | `priceMultiplier` | 1200 (1.2×) | **1200 (1.2×)** |
 | `twapIncrement` | 1.0 ETH | **0.05 ETH** (раскачаем руками когда пул вырастет) |
 | `twapDelayInBlocks` | 1 (12 секунд эквивалент) | **4 (12 секунд эквивалент)** |
@@ -37,7 +37,15 @@
 
 ## Статус
 
-🟢 **Этап 1 - спецификация согласована.** Все параметры залочены (см. [`docs/50-lineadat-spec.md`](docs/50-lineadat-spec.md)). Контракты пока не написаны - это следующий этап.
+🟢 **Phase 4 - LIVE на Linea mainnet (chainId 59144).** Контракты задеплоены и верифицированы на Lineascan; сайт с обратным отсчётом - [www.on-chaindat.com](https://www.on-chaindat.com). Публичные торги открываются по on-chain гейту (ориентировочно 2026-06-09 18:00 UTC; точное время - по обратному отсчёту на сайте, дата может сдвинуться).
+
+Адреса (Linea mainnet 59144):
+- **$LINEADAT токен** (strategy proxy): [`0x02F289E429655d0C0D713A7dFD26850A81f7cFC5`](https://lineascan.build/address/0x02F289E429655d0C0D713A7dFD26850A81f7cFC5)
+- Hook: [`0xA0FAD88E899D7a70179A473140111AB4016F6444`](https://lineascan.build/address/0xA0FAD88E899D7a70179A473140111AB4016F6444)
+- Factory: [`0x127d80F16da8bF381Be26958721960BF76544E73`](https://lineascan.build/address/0x127d80F16da8bF381Be26958721960BF76544E73)
+- Seeder (LP залочен навсегда): [`0xB8b2EDeC4ea37FF2aeA534BfD0F6ce1B9C48484c`](https://lineascan.build/address/0xB8b2EDeC4ea37FF2aeA534BfD0F6ce1B9C48484c)
+
+Параметры (залочены, см. [`docs/50-lineadat-spec.md`](docs/50-lineadat-spec.md)): bagSize 150 000 LINEA, buyIncrement 0.005 ETH (immutable), twapIncrement 0.05 ETH, supply 1B, fee split 80/20.
 
 ## Документы
 
