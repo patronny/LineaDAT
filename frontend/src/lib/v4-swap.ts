@@ -6,7 +6,8 @@
  * the standard Universal Router works because the hook grants a transient transfer allowance in
  * afterSwap (covers PoolManager<->user moves) - no distributor whitelist required. The exact
  * command/action/param encoding below was validated on a Linea-mainnet fork against the real
- * Universal Router (0x8B844f) for both buy and sell (see contracts/test/ForkUniversalRouter.t.sol).
+ * Universal Router (0x8B844f) for both buy and sell, including the Quoter-derived slippage floor
+ * (see contracts/test/ForkQuoterSlippage.t.sol).
  *
  * Buy  (ETH -> LINEADAT): execute{value}( [V4_SWAP], [encode(actions, params)] ), no approval.
  * Sell (LINEADAT -> ETH): needs Permit2 (token->Permit2 approve, Permit2->UR allowance), then execute.
@@ -143,6 +144,49 @@ export const permit2Abi = [
     ],
   },
 ] as const;
+
+/**
+ * Uniswap v4 Quoter. `quoteExactInputSingle` is non-view on-chain (it unlocks the PoolManager and
+ * reverts internally to bubble the result) but is meant to be eth_call'd - declared `view` so viem
+ * issues a plain call. Returns the exact output for the given input, including the hook's dynamic
+ * fee (the quote runs the real swap path), which is exactly what we want for the slippage floor.
+ */
+export const v4QuoterAbi = [
+  {
+    type: "function",
+    name: "quoteExactInputSingle",
+    stateMutability: "view",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "poolKey", type: "tuple", components: poolKeyComponents },
+          { name: "zeroForOne", type: "bool" },
+          { name: "exactAmount", type: "uint128" },
+          { name: "hookData", type: "bytes" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "amountOut", type: "uint256" },
+      { name: "gasEstimate", type: "uint256" },
+    ],
+  },
+] as const;
+
+/**
+ * Slippage tolerance (basis points) applied to the Quoter's output to derive amountOutMinimum.
+ * The Quoter already reflects the live pool + hook fee, so this only buffers price movement between
+ * the quote and execution (e.g. the keeper's buy-and-burn landing in between). 200 bps = 2%, a
+ * launch-safe default for a thin pool; tune here if reverts/protection need rebalancing.
+ */
+export const SLIPPAGE_BPS = 200n;
+
+/** Apply SLIPPAGE_BPS downward to a quoted output amount. */
+export function applySlippage(amountOut: bigint): bigint {
+  return (amountOut * (10_000n - SLIPPAGE_BPS)) / 10_000n;
+}
 
 export const MAX_UINT256 = (1n << 256n) - 1n;
 export const MAX_UINT160 = (1n << 160n) - 1n;

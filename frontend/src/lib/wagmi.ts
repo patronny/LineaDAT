@@ -79,6 +79,13 @@ export const UNIVERSAL_ROUTER = addressOrFallback(
 );
 export const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as `0x${string}`;
 
+/// Uniswap v4 Quoter on Linea - simulates a swap against our pool (hook included) to get the exact
+/// output, used to set the swap's slippage floor (amountOutMinimum). Fallback = canonical Linea v4 Quoter.
+export const V4_QUOTER = addressOrFallback(
+  process.env.NEXT_PUBLIC_V4_QUOTER,
+  "0x2c125569c0bee20a66e33e5491c552b37ebd9934"
+);
+
 /// LineaDAT Uniswap v4 pool key (currency0=ETH, currency1=LineaDAT strategy token, dynamic fee).
 /// Passed to V4_SWAP actions in the Universal Router.
 export const POOL_KEY = {

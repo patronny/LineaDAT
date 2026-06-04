@@ -15,12 +15,14 @@ import {
   encodeV4Swap,
   universalRouterAbi,
   permit2Abi,
+  v4QuoterAbi,
+  applySlippage,
   swapDeadline,
   MAX_UINT256,
   MAX_UINT160,
   MAX_UINT48,
 } from "@/lib/v4-swap";
-import { ADDR, UNIVERSAL_ROUTER, PERMIT2 } from "@/lib/wagmi";
+import { ADDR, UNIVERSAL_ROUTER, PERMIT2, V4_QUOTER, POOL_KEY } from "@/lib/wagmi";
 import { formatEth, formatTokens, sqrtPriceX96ToRatio } from "@/lib/utils";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ArrowDown } from "lucide-react";
@@ -95,7 +97,7 @@ export function SwapCard() {
 
   // Refs drive the effect-based sequencing so stale closures can't fire the wrong step.
   const approvalQueueRef = useRef<ApprovalKind[]>([]);
-  const tradeRef = useRef<{ side: "buy" | "sell"; amountWei: bigint } | null>(null);
+  const tradeRef = useRef<{ side: "buy" | "sell"; amountWei: bigint; minOut: bigint } | null>(null);
 
   const { data: ethBalance, refetch: refetchEth } = useBalance({
     address,
@@ -156,7 +158,8 @@ export function SwapCard() {
     }
   }
 
-  // Estimate output amount from pool ratio + hook fee (display only; the swap sends amountOutMinimum=0).
+  // Estimate output amount from pool ratio + hook fee (display only; the on-chain slippage floor
+  // amountOutMinimum comes from the v4 Quoter below, not from this approximation).
   let estimatedOut = "";
   if (valid && poolRatio > 0) {
     const amountInFloat = Number(amountWei) / 1e18;
@@ -187,10 +190,32 @@ export function SwapCard() {
   const enoughForBuy = side === "buy" ? userEth >= amountWei + GAS_BUFFER : true;
   const enoughForSell = side === "sell" ? userLin >= amountWei : true;
 
+  // Accurate output quote from the v4 Quoter (reflects the live pool + hook fee). Drives the
+  // on-chain slippage floor; before the launch gate opens the quote reverts (the swap card is
+  // hidden until then), and any failure falls back to no floor (minOut = 0).
+  const { data: quoteData } = useReadContract({
+    address: V4_QUOTER,
+    abi: v4QuoterAbi,
+    functionName: "quoteExactInputSingle",
+    args: valid
+      ? [
+          {
+            poolKey: POOL_KEY,
+            zeroForOne: side === "buy",
+            exactAmount: amountWei,
+            hookData: "0x" as const,
+          },
+        ]
+      : undefined,
+    query: { enabled: valid && amountWei > 0n, refetchInterval: 12_000 },
+  });
+  const quotedOut = quoteData ? (quoteData[0] as bigint) : 0n;
+  const minOut = quotedOut > 0n ? applySlippage(quotedOut) : 0n;
+
   // --- execution helpers ---
 
-  function fireSwap(swapSide: "buy" | "sell", amount: bigint) {
-    const { commands, inputs } = encodeV4Swap(swapSide === "buy", amount, 0n);
+  function fireSwap(swapSide: "buy" | "sell", amount: bigint, amountOutMinimum: bigint) {
+    const { commands, inputs } = encodeV4Swap(swapSide === "buy", amount, amountOutMinimum);
     setStep("awaiting-swap");
     swapWrite.writeContract({
       address: UNIVERSAL_ROUTER,
@@ -230,7 +255,7 @@ export function SwapCard() {
     if (q.length > 0) {
       fireApproval(q.shift()!);
     } else if (tradeRef.current) {
-      fireSwap(tradeRef.current.side, tradeRef.current.amountWei);
+      fireSwap(tradeRef.current.side, tradeRef.current.amountWei, tradeRef.current.minOut);
     }
   }
 
@@ -274,10 +299,10 @@ export function SwapCard() {
     approveWrite.reset();
     swapWrite.reset();
     setTradeSnapshot({ side: "buy", amountWei, amountStr, estimatedOut });
-    tradeRef.current = { side: "buy", amountWei };
+    tradeRef.current = { side: "buy", amountWei, minOut };
     approvalQueueRef.current = [];
     setShowApproveStep(false);
-    fireSwap("buy", amountWei);
+    fireSwap("buy", amountWei, minOut);
   }
 
   function openSell() {
@@ -286,7 +311,7 @@ export function SwapCard() {
     approveWrite.reset();
     swapWrite.reset();
     setTradeSnapshot({ side: "sell", amountWei, amountStr, estimatedOut });
-    tradeRef.current = { side: "sell", amountWei };
+    tradeRef.current = { side: "sell", amountWei, minOut };
 
     const queue: ApprovalKind[] = [];
     if (tokenAllowance < amountWei) queue.push("token");
@@ -296,7 +321,7 @@ export function SwapCard() {
 
     if (queue.length === 0) {
       setShowApproveStep(false);
-      fireSwap("sell", amountWei);
+      fireSwap("sell", amountWei, minOut);
     } else {
       setShowApproveStep(true);
       setStep("awaiting-approve");
