@@ -70,8 +70,17 @@ export const ADDR = {
   faucet:   addressOrFallback(process.env.NEXT_PUBLIC_FAUCET_ADDRESS,   FALLBACK_FAUCET),
 } as const;
 
+/// Uniswap Universal Router (v4-capable) + canonical Permit2. Swaps go through the standard
+/// Universal Router (V4_SWAP), not a custom swapper - the non-transferable token is delivered via
+/// the hook's transient allowance, no distributor whitelist needed. UR fallback = Linea V2_1_1.
+export const UNIVERSAL_ROUTER = addressOrFallback(
+  process.env.NEXT_PUBLIC_UNIVERSAL_ROUTER,
+  "0x8B844f885672f333Bc0042cB669255f93a4C1E6b"
+);
+export const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as `0x${string}`;
+
 /// LineaDAT Uniswap v4 pool key (currency0=ETH, currency1=LineaDAT strategy token, dynamic fee).
-/// Used by the test swapper for Buy/Sell on Base Sepolia (Phase 3.5).
+/// Passed to V4_SWAP actions in the Universal Router.
 export const POOL_KEY = {
   currency0: "0x0000000000000000000000000000000000000000" as `0x${string}`,
   currency1: ADDR.strategy,

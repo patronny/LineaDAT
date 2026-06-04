@@ -16,7 +16,8 @@ export type SwapStep =
 
 export interface SwapProgressModalProps {
   open: boolean;
-  mode: "buy" | "sell";
+  /** Whether the flow includes an approval step (sell may need one-time Permit2 approvals). */
+  showApprove: boolean;
   step: SwapStep;
   fromAmount: string;
   fromSymbol: string;
@@ -40,7 +41,7 @@ const neonGreenGlow = "0 0 6px rgba(74,222,128,0.85), 0 0 14px rgba(74,222,128,0
  */
 export function SwapProgressModal({
   open,
-  mode,
+  showApprove,
   step,
   fromAmount,
   fromSymbol,
@@ -63,7 +64,7 @@ export function SwapProgressModal({
 
   if (!open) return null;
 
-  const totalSteps = mode === "sell" ? 2 : 1;
+  const totalSteps = showApprove ? 2 : 1;
   const approveDone = step === "awaiting-swap" || step === "swapping" || step === "success";
   const swapDone = step === "success";
   const swapActive = step === "awaiting-swap" || step === "swapping";
@@ -121,7 +122,7 @@ export function SwapProgressModal({
           </div>
 
           <ol className="space-y-2">
-            {mode === "sell" && (
+            {showApprove && (
               <StepRow
                 index={1}
                 total={totalSteps}
@@ -144,7 +145,7 @@ export function SwapProgressModal({
               />
             )}
             <StepRow
-              index={mode === "sell" ? 2 : 1}
+              index={showApprove ? 2 : 1}
               total={totalSteps}
               label={
                 swapDone

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseEther } from "viem";
 import {
   useAccount,
@@ -11,8 +11,16 @@ import {
 } from "wagmi";
 import { Button } from "./ui/button";
 import { erc20Abi } from "@/lib/abis/erc20";
-import { swapperAbi } from "@/lib/abis/swapper";
-import { ADDR, POOL_KEY } from "@/lib/wagmi";
+import {
+  encodeV4Swap,
+  universalRouterAbi,
+  permit2Abi,
+  swapDeadline,
+  MAX_UINT256,
+  MAX_UINT160,
+  MAX_UINT48,
+} from "@/lib/v4-swap";
+import { ADDR, UNIVERSAL_ROUTER, PERMIT2 } from "@/lib/wagmi";
 import { formatEth, formatTokens, sqrtPriceX96ToRatio } from "@/lib/utils";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { ArrowDown } from "lucide-react";
@@ -44,14 +52,20 @@ function TokenBadge({ symbol }: { symbol: string }) {
   );
 }
 
+type ApprovalKind = "token" | "permit2";
+
 /**
- * Standalone Swap card matching tokenstrategy.com layout: Selling input on top, swap arrow,
- * Buying input below, Enter amount button, Protocol fee footer.
+ * Standalone Swap card. Trades go through the standard Uniswap Universal Router (V4_SWAP), NOT a
+ * custom swapper - matching wBTCSTR. $LINEADAT is non-transferable, but the swap works because the
+ * hook grants a transient transfer allowance in afterSwap (no distributor whitelist needed).
  *
- * Trade execution lives in a LlamaSwap-style progress modal (Approve -> Swap with auto-advance).
- * The card's button only opens the modal; all wallet popups are gated by modal state, which
- * eliminates the double-click double-spend trap (even with `useWaitForTransactionReceipt`,
- * a stray click between popups was still possible against the bare button).
+ * - Buy (ETH -> LINEADAT): single `execute{value}` call, no approval.
+ * - Sell (LINEADAT -> ETH): Permit2 - one-time `token.approve(Permit2)` + `Permit2.approve(router)`
+ *   (max amount / max expiry, so later sells are a single tx), then `execute`.
+ *
+ * Execution lives in a LlamaSwap-style progress modal (Approve -> Swap with auto-advance). The
+ * card's button only opens the modal; all wallet popups are gated by modal state, eliminating the
+ * double-click double-spend trap.
  */
 export function SwapCard() {
   const [side, setSide] = useState<"buy" | "sell">("buy");
@@ -61,23 +75,27 @@ export function SwapCard() {
   const [maxSelected, setMaxSelected] = useState(false);
   const { address } = useAccount();
 
-  // Two independent write hooks so we can hold a tx hash for the approve step
-  // and another for the swap step concurrently within one modal flow.
+  // Two independent write hooks: approveWrite is reused for the (up to two) Permit2 approvals,
+  // swapWrite for the Universal Router execute.
   const approveWrite = useWriteContract();
   const swapWrite = useWriteContract();
   const approveReceipt = useWaitForTransactionReceipt({ hash: approveWrite.data });
   const swapReceipt = useWaitForTransactionReceipt({ hash: swapWrite.data });
 
   const [step, setStep] = useState<SwapStep>("idle");
+  const [showApproveStep, setShowApproveStep] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-  // Snapshot of the trade params at modal-open time so live input edits can't
-  // change what's mid-flight.
+  // Snapshot of the trade params at modal-open time so live input edits can't change mid-flight.
   const [tradeSnapshot, setTradeSnapshot] = useState<{
     side: "buy" | "sell";
     amountWei: bigint;
     amountStr: string;
     estimatedOut: string;
   } | null>(null);
+
+  // Refs drive the effect-based sequencing so stale closures can't fire the wrong step.
+  const approvalQueueRef = useRef<ApprovalKind[]>([]);
+  const tradeRef = useRef<{ side: "buy" | "sell"; amountWei: bigint } | null>(null);
 
   const { data: ethBalance, refetch: refetchEth } = useBalance({
     address,
@@ -90,16 +108,24 @@ export function SwapCard() {
     args: address ? [address] : undefined,
     query: { enabled: !!address, refetchInterval: 12_000 },
   });
-  const { data: linAllowance, refetch: refetchAllowance } = useReadContract({
+  // ERC20 allowance of the token to Permit2 (first leg of the sell approval).
+  const { data: tokenToPermit2, refetch: refetchTokenAllow } = useReadContract({
     address: ADDR.strategy,
     abi: erc20Abi,
     functionName: "allowance",
-    args: address ? [address, ADDR.swapper] : undefined,
+    args: address ? [address, PERMIT2] : undefined,
+    query: { enabled: !!address, refetchInterval: 12_000 },
+  });
+  // Permit2 allowance granted to the Universal Router (second leg). Returns (amount, expiration, nonce).
+  const { data: permit2ToRouter, refetch: refetchPermit2Allow } = useReadContract({
+    address: PERMIT2,
+    abi: permit2Abi,
+    functionName: "allowance",
+    args: address ? [address, ADDR.strategy, UNIVERSAL_ROUTER] : undefined,
     query: { enabled: !!address, refetchInterval: 12_000 },
   });
   const { data: stats } = useStrategyStats();
-  // Current decaying protocol fee, from the shared snapshot (was a per-browser
-  // calculateFee read). Fall back to the launch defaults until it resolves.
+  // Current decaying protocol fee, from the shared snapshot. Fall back to launch defaults.
   const feeRaw = stats ? (side === "buy" ? stats.feeBuy : stats.feeSell) : 0n;
   const feeBps = feeRaw > 0n ? feeRaw : side === "buy" ? 9900n : 1000n;
   const feePercent = Number(feeBps) / 100;
@@ -107,13 +133,12 @@ export function SwapCard() {
 
   const userEth = ethBalance?.value ?? 0n;
   const userLin = linBal ?? 0n;
-  const userAllowance = linAllowance ?? 0n;
+  const tokenAllowance = tokenToPermit2 ?? 0n;
+  const permit2Amount = permit2ToRouter ? (permit2ToRouter[0] as bigint) : 0n;
+  const permit2Expiration = permit2ToRouter ? BigInt(permit2ToRouter[1] as number | bigint) : 0n;
 
   // When the user hit MAX we trade the EXACT balance bigint (minus a small gas buffer on
-  // the buy side), never the re-parsed display string. Parsing a rounded/scientific string
-  // (e.g. "5.18e-8") produced an amount a hair over balance, so the swap failed with
-  // "insufficient funds" until a digit was trimmed. amountStr stays a clean compact number
-  // for display only; this bigint is the real trade size.
+  // the buy side), never the re-parsed display string.
   const GAS_BUFFER = parseEther("0.0001");
   let amountWei = 0n;
   let valid = false;
@@ -131,7 +156,7 @@ export function SwapCard() {
     }
   }
 
-  // Estimate output amount from pool ratio + hook fee.
+  // Estimate output amount from pool ratio + hook fee (display only; the swap sends amountOutMinimum=0).
   let estimatedOut = "";
   if (valid && poolRatio > 0) {
     const amountInFloat = Number(amountWei) / 1e18;
@@ -162,6 +187,53 @@ export function SwapCard() {
   const enoughForBuy = side === "buy" ? userEth >= amountWei + GAS_BUFFER : true;
   const enoughForSell = side === "sell" ? userLin >= amountWei : true;
 
+  // --- execution helpers ---
+
+  function fireSwap(swapSide: "buy" | "sell", amount: bigint) {
+    const { commands, inputs } = encodeV4Swap(swapSide === "buy", amount, 0n);
+    setStep("awaiting-swap");
+    swapWrite.writeContract({
+      address: UNIVERSAL_ROUTER,
+      abi: universalRouterAbi,
+      functionName: "execute",
+      args: [commands, [...inputs], swapDeadline()],
+      value: swapSide === "buy" ? amount : 0n,
+    });
+    setStep("swapping");
+  }
+
+  function fireApproval(kind: ApprovalKind) {
+    approveWrite.reset();
+    if (kind === "token") {
+      // ERC20 approve the token to Permit2 (max - one-time).
+      approveWrite.writeContract({
+        address: ADDR.strategy,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [PERMIT2, MAX_UINT256],
+      });
+    } else {
+      // Permit2 allowance for the Universal Router (max amount, max expiry).
+      approveWrite.writeContract({
+        address: PERMIT2,
+        abi: permit2Abi,
+        functionName: "approve",
+        args: [ADDR.strategy, UNIVERSAL_ROUTER, MAX_UINT160, MAX_UINT48],
+      });
+    }
+    setStep("approving");
+  }
+
+  // Drive the sell sequence: run the next queued approval, or fire the swap when the queue drains.
+  function runQueueOrSwap() {
+    const q = approvalQueueRef.current;
+    if (q.length > 0) {
+      fireApproval(q.shift()!);
+    } else if (tradeRef.current) {
+      fireSwap(tradeRef.current.side, tradeRef.current.amountWei);
+    }
+  }
+
   // Capture write errors and surface them in the modal.
   useEffect(() => {
     if (approveWrite.error) {
@@ -176,31 +248,25 @@ export function SwapCard() {
     }
   }, [swapWrite.error]);
 
-  // Approve confirmed -> auto-fire the swap leg.
+  // An approval confirmed -> advance the queue (next approval) or fire the swap.
   useEffect(() => {
-    if (step !== "approving") return;
-    if (!approveReceipt.isSuccess) return;
-    if (!tradeSnapshot || !address) return;
-    refetchAllowance();
-    setStep("awaiting-swap");
-    swapWrite.writeContract({
-      address: ADDR.swapper,
-      abi: swapperAbi,
-      functionName: "sellExactInput",
-      args: [POOL_KEY, tradeSnapshot.amountWei, address],
-    });
-    setStep("swapping");
-  }, [approveReceipt.isSuccess, step, tradeSnapshot, address, swapWrite, refetchAllowance]);
+    if (step !== "approving" || !approveReceipt.isSuccess) return;
+    refetchTokenAllow();
+    refetchPermit2Allow();
+    runQueueOrSwap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approveReceipt.isSuccess, step]);
 
-  // Swap confirmed -> success state and refresh balances.
+  // Swap confirmed -> success state and refresh balances/allowances.
   useEffect(() => {
-    if (step !== "swapping") return;
-    if (!swapReceipt.isSuccess) return;
+    if (step !== "swapping" || !swapReceipt.isSuccess) return;
     setStep("success");
     refetchEth();
     refetchLin();
-    refetchAllowance();
-  }, [swapReceipt.isSuccess, step, refetchEth, refetchLin, refetchAllowance]);
+    refetchTokenAllow();
+    refetchPermit2Allow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swapReceipt.isSuccess, step]);
 
   function openBuy() {
     if (!address || !valid || !enoughForBuy) return;
@@ -208,15 +274,10 @@ export function SwapCard() {
     approveWrite.reset();
     swapWrite.reset();
     setTradeSnapshot({ side: "buy", amountWei, amountStr, estimatedOut });
-    setStep("awaiting-swap");
-    swapWrite.writeContract({
-      address: ADDR.swapper,
-      abi: swapperAbi,
-      functionName: "buyExactInput",
-      args: [POOL_KEY, address],
-      value: amountWei,
-    });
-    setStep("swapping");
+    tradeRef.current = { side: "buy", amountWei };
+    approvalQueueRef.current = [];
+    setShowApproveStep(false);
+    fireSwap("buy", amountWei);
   }
 
   function openSell() {
@@ -225,43 +286,40 @@ export function SwapCard() {
     approveWrite.reset();
     swapWrite.reset();
     setTradeSnapshot({ side: "sell", amountWei, amountStr, estimatedOut });
-    if (userAllowance >= amountWei) {
-      // Allowance sufficient, skip approve and go straight to swap popup.
-      setStep("awaiting-swap");
-      swapWrite.writeContract({
-        address: ADDR.swapper,
-        abi: swapperAbi,
-        functionName: "sellExactInput",
-        args: [POOL_KEY, amountWei, address],
-      });
-      setStep("swapping");
+    tradeRef.current = { side: "sell", amountWei };
+
+    const queue: ApprovalKind[] = [];
+    if (tokenAllowance < amountWei) queue.push("token");
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
+    if (permit2Amount < amountWei || permit2Expiration <= nowSec) queue.push("permit2");
+    approvalQueueRef.current = queue;
+
+    if (queue.length === 0) {
+      setShowApproveStep(false);
+      fireSwap("sell", amountWei);
     } else {
-      // Modal opens with an Approve button; user must click to fire popup.
+      setShowApproveStep(true);
       setStep("awaiting-approve");
     }
   }
 
+  // Modal "Approve" button -> kick off the approval queue.
   function fireApprove() {
-    if (!tradeSnapshot) return;
+    if (!tradeRef.current) return;
     setErrorMessage(undefined);
-    approveWrite.writeContract({
-      address: ADDR.strategy,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [ADDR.swapper, tradeSnapshot.amountWei],
-    });
-    setStep("approving");
+    runQueueOrSwap();
   }
 
   function closeModal() {
     setStep("idle");
     setTradeSnapshot(null);
     setErrorMessage(undefined);
+    approvalQueueRef.current = [];
+    tradeRef.current = null;
     approveWrite.reset();
     swapWrite.reset();
     if (step === "success") {
-      // Reset input on a successful trade so the user doesn't accidentally
-      // re-fire the same amount.
+      // Reset input on a successful trade so the user doesn't re-fire the same amount.
       setAmountStr("");
       setMaxSelected(false);
     }
@@ -385,7 +443,7 @@ export function SwapCard() {
 
       <SwapProgressModal
         open={modalOpen}
-        mode={modalSide}
+        showApprove={showApproveStep}
         step={step}
         fromAmount={modalFromAmount}
         fromSymbol={modalFromSymbol}
