@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 
 import { config } from "@/lib/wagmi-client";
+import { DEFAULT_CHAIN_ID } from "@/lib/wagmi";
 
 import "@rainbow-me/rainbowkit/styles.css";
 
@@ -28,7 +29,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             accentColorForeground: "hsl(0, 0%, 8%)",
             borderRadius: "small",
           })}
-          initialChain={84532}
+          initialChain={DEFAULT_CHAIN_ID}
           showRecentTransactions={true}
           locale="en-US"
         >
