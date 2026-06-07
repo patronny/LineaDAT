@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSnapshot } from "@/hooks/useSnapshot";
-import { PriceChart } from "./price-chart";
+import { GeckoChart } from "./gecko-chart";
 import { LaunchCountdown } from "./launch-countdown";
 
 /**
@@ -25,7 +25,7 @@ function useLaunched(): boolean | null {
 
 /**
  * Pre-launch: render LaunchCountdown.
- * Post-launch: render DexChart.
+ * Post-launch: render GeckoChart (GeckoTerminal embed of the live v4 pool).
  */
 export function ChartOrCountdown() {
   // Default to the launch view until the on-chain deploymentTime resolves AND proves
@@ -33,7 +33,7 @@ export function ChartOrCountdown() {
   // timestamp both render the countdown (which shows its own "Loading launch schedule…"
   // state) - we never silently degrade to the chart embed on a transient RPC failure.
   if (!useLaunched()) return <LaunchCountdown />;
-  return <PriceChart />;
+  return <GeckoChart />;
 }
 
 /**
