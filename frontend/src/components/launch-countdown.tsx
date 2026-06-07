@@ -85,8 +85,7 @@ export function LaunchCountdown() {
         <Cell label="Seconds" value={secs} />
       </div>
       <div className="mt-5 pt-4 border-t border-border text-center text-[10px] sm:text-xs font-mono text-muted-foreground space-y-0.5">
-        <div>Target launch (approximate): <span className="text-foreground">{launchUtc}</span></div>
-        <div>Date is not final and may shift; this countdown always shows the latest time</div>
+        <div>Launch: <span className="text-foreground">{launchUtc}</span></div>
         <div>Buy fee will decay 99% → 10% over 89 minutes from launch</div>
       </div>
     </div>
