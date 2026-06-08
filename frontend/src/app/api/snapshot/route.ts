@@ -91,7 +91,19 @@ const client = createPublicClient({ chain: linea, transport: http(RPC_URL) });
 const DEAD = "0x000000000000000000000000000000000000dEaD" as `0x${string}`;
 const STRATEGY = ADDR.strategy;
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Cache-busting guard: the snapshot is global state and never needs query
+  // params. The CDN caches by full URL (incl. query), so `?cb=<random>` would
+  // bypass the edge cache and force the expensive on-chain multicall onto the
+  // origin (Infura) on every request - a cheap DDoS amplification vector.
+  // Bounce any query'd request to the canonical (cacheable) path BEFORE doing
+  // any RPC work. The frontend always calls /api/snapshot with no query, so
+  // legitimate traffic is unaffected.
+  const url = new URL(req.url);
+  if (url.search) {
+    url.search = "";
+    return Response.redirect(url.toString(), 308);
+  }
   try {
     const r = await client.multicall({
       contracts: [
