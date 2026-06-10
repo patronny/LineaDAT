@@ -1,0 +1,44 @@
+name: Ops Monitor
+
+# Free-endpoint health monitor -> Telegram (per-DAT bots + platform status bot).
+# Never touches Infura. See .github/scripts/monitor.py for the check list.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *" # GitHub may delay to ~10-15 min under load; fine for ops
+  workflow_dispatch:
+    inputs:
+      ping:
+        description: "Send a deploy-confirmation message to every channel"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-monitor
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cross-run state (lastBagId, alert dedup). Cache keys are immutable, so
+      # save under the unique run id and restore the most recent prior one.
+      - uses: actions/cache@v4
+        with:
+          path: state
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: |
+            monitor-state-
+
+      - name: Run checks
+        env:
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_TOKEN_STATUS: ${{ secrets.TG_TOKEN_STATUS }}
+          TG_TOKEN_LINEADAT: ${{ secrets.TG_TOKEN_LINEADAT }}
+          PING: ${{ inputs.ping && 'true' || 'false' }}
+        run: python3 .github/scripts/monitor.py
