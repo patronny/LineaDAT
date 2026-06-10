@@ -21,7 +21,7 @@ import urllib.request
 CHAT_ID = os.environ["TG_CHAT_ID"]
 STATE_PATH = "state/monitor-state.json"
 REALERT_MIN = 30
-KEEPER_ETH_MIN = 0.1
+KEEPER_ETH_MIN = 0.3
 KEEPER_STALE_S = 240
 
 SITE_URL = "https://www.on-chaindat.com"
@@ -33,6 +33,8 @@ DATS = [
         "token_env": "TG_TOKEN_LINEADAT",
         "keeper": "https://lineadat-keeper.fly.dev/status",
         "indexer_healthz": "https://lineadat-indexer.fly.dev/healthz",
+        # CDN-cached server route with this DAT's on-chain state (burned etc.)
+        "snapshot": SNAPSHOT_URL,
     },
 ]
 
@@ -149,14 +151,30 @@ def main():
             except Exception:
                 pass
 
-            # good news: first TWAP burn cycle started (ethToTwap went 0 -> >0) and burns
+            # good news: bag sold (ethToTwap grew). First run just records the baseline.
             try:
                 twap = float(k.get("ethToTwapEth") or 0)
-                if twap > 0 and not dstate.get("twapSeen"):
-                    send(token, f"🔥 {name}: появился ethToTwap = {twap:.4f} ETH - бэг продан, скоро первый burn.")
-                    dstate["twapSeen"] = True
+                if "ethToTwap" in dstate and twap > float(dstate["ethToTwap"]) + 1e-9:
+                    gain = twap - float(dstate["ethToTwap"])
+                    send(token, f"💸 {name}: бэг продан - ethToTwap пополнился на {gain:.4f} ETH (теперь {twap:.4f} ETH, ждём burn).")
+                dstate["ethToTwap"] = twap
             except Exception:
                 pass
+
+        # good news: EVERY burn (balanceOf(DEAD) delta from the DAT's snapshot)
+        if dat.get("snapshot"):
+            s_code, s = fetch(dat["snapshot"])
+            if s_code == 200 and isinstance(s, dict):
+                try:
+                    burned = int(s.get("burned") or 0)
+                    if "burned" in dstate and burned > int(dstate["burned"]):
+                        delta = (burned - int(dstate["burned"])) / 1e18
+                        total = burned / 1e18
+                        pct = burned / 1e27 * 100
+                        send(token, f"🔥 {name}: BURN! Сожжено +{delta:,.0f} токенов (всего {total:,.0f} = {pct:.4f}% supply).")
+                    dstate["burned"] = str(burned)
+                except Exception:
+                    pass
 
         i_code, _ = fetch(dat["indexer_healthz"])
         al.check(token, f"{name}: indexer", i_code != 200, f"{name}: индексер healthz {i_code or 'timeout'} (таблицы на сайте перестанут обновляться)")
