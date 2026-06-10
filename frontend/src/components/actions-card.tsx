@@ -20,6 +20,11 @@ import { formatEth } from "@/lib/utils";
  * via the dedicated LineaDATFaucet wrapper; legacy MockTLINEA.faucetClaim 100k
  * still works on-chain but the UI no longer surfaces it).
  */
+// Linea mainnet has no faucet / testnet ETH tap - gates the faucet UI AND its
+// polling reads (a lastFaucetAt eth_call against a non-existent contract was
+// firing every 30s per connected wallet on mainnet).
+const isMainnet = DEFAULT_CHAIN_ID === 59144;
+
 const faucetAbi = [
   {
     type: "function",
@@ -64,7 +69,7 @@ export function ActionsCard() {
     abi: faucetAbi,
     functionName: "lastFaucetAt",
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 30_000 },
+    query: { enabled: !!address && !isMainnet, refetchInterval: 30_000 },
   });
 
   // Re-pull every reactive read the moment a write confirms - otherwise stale
@@ -106,8 +111,7 @@ export function ActionsCard() {
 
   const txBusy = isPending || isConfirming;
 
-  // Stage-aware copy: Linea mainnet uses canonical $LINEA and has no faucet / testnet ETH tap.
-  const isMainnet = DEFAULT_CHAIN_ID === 59144;
+  // Stage-aware copy: Linea mainnet uses canonical $LINEA.
   const ut = isMainnet ? "$LINEA" : "$tLINEA";
 
   function approveTlinea() {

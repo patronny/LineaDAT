@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
-import { hookAbi } from "@/lib/abis/swapper";
 import { useSwaps } from "@/hooks/useIndexer";
-import { ADDR, txUrl, addressUrl } from "@/lib/wagmi";
-import { formatEth, formatTokens, shortAddress, formatTradeDate, getEventsChunked } from "@/lib/utils";
+import { txUrl, addressUrl } from "@/lib/wagmi";
+import { formatEth, formatTokens, shortAddress, formatTradeDate } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 import { SortHeader, useTableSort } from "./ui/sort-header";
@@ -21,16 +19,17 @@ type SwapRow = {
 };
 
 export function PaginatedSwapsTable() {
-  const client = usePublicClient();
   const indexer = useSwaps(500);
   const [rows, setRows] = useState<SwapRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(0);
 
+  // Indexer-only (same-origin /api/indexer proxy); the on-chain getLogs
+  // fallback is gone - see the note in lib/utils.ts. Last good rows stay on
+  // screen while the probe retries.
   useEffect(() => {
     if (indexer.usable && indexer.data) {
-      // Source 1 - Ponder indexer. Trader, side, amounts already normalized.
       const swaps: SwapRow[] = indexer.data.map((s) => ({
         side: s.side,
         ethAmount: BigInt(s.ethAmount),
@@ -44,67 +43,10 @@ export function PaginatedSwapsTable() {
       setIsLoading(false);
       return;
     }
-    if (indexer.loading) return;
+    if (!indexer.loading) setIsLoading(false);
+  }, [indexer.usable, indexer.loading, indexer.data]);
 
-    // Source 2 - on-chain getLogs fallback (50k-block window).
-    if (!client || ADDR.hook === "0x0000000000000000000000000000000000000000") {
-      setIsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    async function fetchSwaps() {
-      try {
-        const events = await getEventsChunked(client!, {
-          address: ADDR.hook,
-          abi: hookAbi,
-          eventName: "Trade",
-          args: { strategy: ADDR.strategy },
-        });
-        const sorted = [...events].sort((a, b) => Number(b.blockNumber - a.blockNumber));
-        const enriched: SwapRow[] = await Promise.all(
-          sorted.map(async (e) => {
-            const eth = BigInt(e.args.ethAmount as bigint | number);
-            const tok = BigInt(e.args.tokenAmount as bigint | number);
-            let origin: string | null = null;
-            let ts = 0;
-            try {
-              const [tx, block] = await Promise.all([
-                client!.getTransaction({ hash: e.transactionHash }),
-                client!.getBlock({ blockHash: e.blockHash }),
-              ]);
-              origin = tx.from ?? null;
-              ts = Number(block.timestamp);
-            } catch {
-              /* ignore */
-            }
-            return {
-              // v4 BalanceDelta is from swapper's perspective:
-              //   amount0 (ETH) negative → swapper paid ETH → BUY LINEASTR
-              //   amount0 (ETH) positive → swapper received ETH → SELL LINEASTR
-              side: eth < 0n ? ("buy" as const) : ("sell" as const),
-              ethAmount: eth < 0n ? -eth : eth,
-              tokenAmount: tok < 0n ? -tok : tok,
-              tx: e.transactionHash,
-              block: e.blockNumber,
-              ts,
-              origin,
-            };
-          })
-        );
-        if (!cancelled) setRows(enriched);
-      } catch (err) {
-        console.error("PaginatedSwaps fetch failed:", err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-    fetchSwaps();
-    const id = setInterval(fetchSwaps, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [client, indexer.usable, indexer.loading, indexer.data]);
+  const unavailable = !indexer.loading && !indexer.usable;
 
   const cmpBigint = (x: bigint, y: bigint) => (x < y ? -1 : x > y ? 1 : 0);
   const { sorted, sortKey, sortDir, toggle } = useTableSort(rows, "date", {
@@ -128,7 +70,13 @@ export function PaginatedSwapsTable() {
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground py-8 text-center px-4">No swaps yet.</p>;
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center px-4">
+        {unavailable
+          ? "Live data is temporarily unavailable - retrying. The protocol keeps running on-chain."
+          : "No swaps yet."}
+      </p>
+    );
   }
 
   return (

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient, useReadContracts, useWaitForTransactionReceipt, useWriteContract, useAccount } from "wagmi";
+import { useReadContracts, useWaitForTransactionReceipt, useWriteContract, useAccount } from "wagmi";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBags } from "@/hooks/useIndexer";
 import { ADDR, UNDERLYING_SYMBOL } from "@/lib/wagmi";
-import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
+import { formatEth, formatTokens, formatTradeDate } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 import { SortHeader, useTableSort } from "./ui/sort-header";
@@ -21,10 +21,13 @@ export type BagRow = {
 
 /**
  * Hook: live unsold bag rows shared between HoldingsTable and the dashboard
- * summary line in the card title. Indexer-first with on-chain getLogs fallback.
+ * summary line in the card title. Indexer-only (via the same-origin /api/indexer
+ * proxy); the on-chain getLogs fallback is gone - see the note in lib/utils.ts.
+ * `unavailable` = the indexer cannot be reached right now; tables surface that
+ * honestly instead of pretending the protocol has no activity. Last good rows
+ * stay on screen while the probe retries.
  */
-export function useHoldingsRows(): { rows: BagRow[]; isLoading: boolean } {
-  const client = usePublicClient();
+export function useHoldingsRows(): { rows: BagRow[]; isLoading: boolean; unavailable: boolean } {
   const indexer = useBags();
   const [rows, setRows] = useState<BagRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,47 +47,10 @@ export function useHoldingsRows(): { rows: BagRow[]; isLoading: boolean } {
       setIsLoading(false);
       return;
     }
-    if (indexer.loading) return;
-    if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
-      setIsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    async function fetchBags() {
-      try {
-        const events = await getEventsChunked(client!, {
-          address: ADDR.strategy,
-          abi: strategyAbi,
-          eventName: "ERC20BoughtByProtocol",
-        });
-        const enriched: BagRow[] = await Promise.all(
-          events.map(async (e) => {
-            const block = await client!.getBlock({ blockHash: e.blockHash });
-            return {
-              bagId: e.args.bagId as bigint,
-              paid: e.args.purchasePrice as bigint,
-              listPrice: e.args.listPrice as bigint,
-              block: e.blockNumber,
-              ts: Number(block.timestamp),
-            };
-          })
-        );
-        if (!cancelled) setRows(enriched);
-      } catch (err) {
-        console.error("Holdings fetch failed:", err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-    fetchBags();
-    const id = setInterval(fetchBags, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [client, indexer.usable, indexer.loading, indexer.data]);
+    if (!indexer.loading) setIsLoading(false);
+  }, [indexer.usable, indexer.loading, indexer.data]);
 
-  return { rows, isLoading };
+  return { rows, isLoading, unavailable: !indexer.loading && !indexer.usable };
 }
 
 /**
@@ -138,7 +104,7 @@ export function HoldingsTable() {
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash });
   const txBusy = isPending || isConfirming;
-  const { rows, isLoading } = useHoldingsRows();
+  const { rows, isLoading, unavailable } = useHoldingsRows();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
@@ -193,7 +159,9 @@ export function HoldingsTable() {
   if (liveRows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center px-4">
-        No bags listed for sale right now.
+        {unavailable
+          ? "Live data is temporarily unavailable - retrying. The protocol keeps running on-chain."
+          : "No bags listed for sale right now."}
       </p>
     );
   }

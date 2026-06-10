@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
-import { strategyAbi } from "@/lib/abis/strategy";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBags } from "@/hooks/useIndexer";
-import { ADDR, txUrl, UNDERLYING_SYMBOL } from "@/lib/wagmi";
-import { formatEth, formatTokens, formatTradeDate, getEventsChunked } from "@/lib/utils";
+import { txUrl, UNDERLYING_SYMBOL } from "@/lib/wagmi";
+import { formatEth, formatTokens, formatTradeDate } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { PaginationFooter, usePagedSlice } from "./pagination-footer";
 import { SortHeader, useTableSort } from "./ui/sort-header";
@@ -22,10 +20,10 @@ export type SaleRow = {
 
 /**
  * Hook: live past-sale rows shared between SalesTable and the dashboard
- * summary line in the card title. Indexer-first with on-chain getLogs fallback.
+ * summary line in the card title. Indexer-only (same-origin /api/indexer proxy);
+ * the on-chain getLogs fallback is gone - see the note in lib/utils.ts.
  */
-export function useSalesRows(): { rows: SaleRow[]; isLoading: boolean } {
-  const client = usePublicClient();
+export function useSalesRows(): { rows: SaleRow[]; isLoading: boolean; unavailable: boolean } {
   const indexer = useBags();
   const [rows, setRows] = useState<SaleRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,63 +44,10 @@ export function useSalesRows(): { rows: SaleRow[]; isLoading: boolean } {
       setIsLoading(false);
       return;
     }
-    if (indexer.loading) return;
-    if (!client || ADDR.strategy === "0x0000000000000000000000000000000000000000") {
-      setIsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    async function fetchSales() {
-      try {
-        const [bought, sold] = await Promise.all([
-          getEventsChunked(client!, {
-            address: ADDR.strategy,
-            abi: strategyAbi,
-            eventName: "ERC20BoughtByProtocol",
-          }),
-          getEventsChunked(client!, {
-            address: ADDR.strategy,
-            abi: strategyAbi,
-            eventName: "ERC20SoldByProtocol",
-          }),
-        ]);
+    if (!indexer.loading) setIsLoading(false);
+  }, [indexer.usable, indexer.loading, indexer.data]);
 
-        const paidByBag = new Map<string, bigint>();
-        for (const e of bought) {
-          paidByBag.set(String(e.args.bagId as bigint), e.args.purchasePrice as bigint);
-        }
-
-        const enriched: SaleRow[] = await Promise.all(
-          sold.map(async (e) => {
-            const block = await client!.getBlock({ blockHash: e.blockHash });
-            const bagId = e.args.bagId as bigint;
-            return {
-              bagId,
-              soldFor: e.args.price as bigint,
-              paidByBot: paidByBag.get(String(bagId)) ?? 0n,
-              block: e.blockNumber,
-              ts: Number(block.timestamp),
-              tx: e.transactionHash,
-            };
-          })
-        );
-
-        if (!cancelled) setRows(enriched);
-      } catch (err) {
-        console.error("Sales fetch failed:", err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-    fetchSales();
-    const id = setInterval(fetchSales, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [client, indexer.usable, indexer.loading, indexer.data]);
-
-  return { rows, isLoading };
+  return { rows, isLoading, unavailable: !indexer.loading && !indexer.usable };
 }
 
 /**
@@ -136,7 +81,7 @@ export function useSalesTotals(): {
  */
 export function SalesTable() {
   const { data: stats } = useStrategyStats();
-  const { rows, isLoading } = useSalesRows();
+  const { rows, isLoading, unavailable } = useSalesRows();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
@@ -165,7 +110,9 @@ export function SalesTable() {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center px-4">
-        No bags sold yet. Bags appear here once buyers redeem listed bags.
+        {unavailable
+          ? "Live data is temporarily unavailable - retrying. The protocol keeps running on-chain."
+          : "No bags sold yet. Bags appear here once buyers redeem listed bags."}
       </p>
     );
   }

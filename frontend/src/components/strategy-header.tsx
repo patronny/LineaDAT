@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePublicClient } from "wagmi";
+import { useMemo, useState } from "react";
 import { useSwaps } from "@/hooks/useIndexer";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { Card } from "./ui/card";
@@ -9,9 +8,8 @@ import { LineaDatSquareIcon, LineaIcon } from "./icons/token-icons";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useEthPrice } from "@/hooks/useEthPrice";
 import { usePriceChange24h } from "@/hooks/usePriceChange24h";
-import { hookAbi } from "@/lib/abis/swapper";
 import { ADDR, addressUrl } from "@/lib/wagmi";
-import { lineastrPriceInEth, getEventsChunked } from "@/lib/utils";
+import { lineastrPriceInEth } from "@/lib/utils";
 
 /**
  * Big strategy header card matching tokenstrategy.com reference.
@@ -20,9 +18,7 @@ import { lineastrPriceInEth, getEventsChunked } from "@/lib/utils";
 export function StrategyHeader() {
   const { data } = useStrategyStats();
   const ethUsd = useEthPrice();
-  const client = usePublicClient();
   const swaps = useSwaps(500);
-  const [vol24hFallback, setVol24hFallback] = useState<bigint>(0n);
   const [copied, setCopied] = useState(false);
 
   async function copyContractAddress() {
@@ -35,10 +31,11 @@ export function StrategyHeader() {
     }
   }
 
-  // 24h ETH-side volume. Prefer the indexer's swap rows (GraphQL, no per-tab Infura
-  // getLogs); the chunked on-chain Trade scan is the expensive fallback and now runs
-  // ONLY when the indexer is down (it was firing ~6 getLogs every 30s per tab on the
-  // happy path - by far the costliest frontend RPC source).
+  // 24h ETH-side volume from the indexer's swap rows (one Trade event per user
+  // swap - the hook's internal fee-sell round-trips are NOT counted, which is
+  // why GeckoTerminal's gross pool number reads higher). Indexer-only; the
+  // on-chain getLogs fallback is gone (see lib/utils.ts) - unreachable indexer
+  // renders "-" via fmtUsdLarge(0).
   const indexerVol24h = useMemo<bigint | null>(() => {
     if (!swaps.usable || !swaps.data) return null;
     const since = Math.floor(Date.now() / 1000) - 86_400;
@@ -48,37 +45,7 @@ export function StrategyHeader() {
     );
   }, [swaps.usable, swaps.data]);
 
-  useEffect(() => {
-    if (swaps.usable || swaps.loading) return; // indexer healthy/loading -> skip getLogs
-    if (!client || ADDR.hook === "0x0000000000000000000000000000000000000000") return;
-    let cancelled = false;
-    async function fetchVol() {
-      try {
-        const events = await getEventsChunked(client!, {
-          address: ADDR.hook,
-          abi: hookAbi,
-          eventName: "Trade",
-          args: { strategy: ADDR.strategy },
-        });
-        let total = 0n;
-        for (const e of events) {
-          const eth = BigInt((e as { args: { ethAmount: bigint | number } }).args.ethAmount);
-          total += eth < 0n ? -eth : eth;
-        }
-        if (!cancelled) setVol24hFallback(total);
-      } catch {
-        // silent - leave volume at 0
-      }
-    }
-    fetchVol();
-    const id = setInterval(fetchVol, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [client, swaps.usable, swaps.loading]);
-
-  const vol24h = indexerVol24h ?? vol24hFallback;
+  const vol24h = indexerVol24h ?? 0n;
 
   const pricePerLineastrEth = data ? lineastrPriceInEth(data.sqrtPriceX96) : 0;
   const pricePerLineastrUsd = pricePerLineastrEth * ethUsd;
@@ -167,7 +134,11 @@ export function StrategyHeader() {
           <Stat label="$LINEADAT" value={fmtPriceUsd(pricePerLineastrUsd)} />
           <Stat label="Market Cap" value={fmtUsdLarge(marketCapUsd)} />
           <Stat label="FDV" value={fmtUsdLarge(fdvUsd)} />
-          <Stat label="24h Volume" value={fmtUsdLarge(vol24hUsd)} />
+          <Stat
+            label="24h Volume"
+            value={fmtUsdLarge(vol24hUsd)}
+            title="Trade volume (excludes protocol fee swaps), so trackers counting raw pool swaps may show a higher number"
+          />
           <Stat
             label="24h Change"
             value={
@@ -195,11 +166,13 @@ function Stat({
   value,
   muted,
   tone,
+  title,
 }: {
   label: string;
   value: string;
   muted?: boolean;
   tone?: "positive" | "negative";
+  title?: string;
 }) {
   const toneClass =
     tone === "positive"
@@ -210,7 +183,7 @@ function Stat({
           ? "text-muted-foreground"
           : "";
   return (
-    <div className="lg:text-right">
+    <div className={`lg:text-right ${title ? "cursor-help" : ""}`} title={title}>
       <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`font-mono tabular text-sm sm:text-base font-semibold ${toneClass}`}>
         {value}

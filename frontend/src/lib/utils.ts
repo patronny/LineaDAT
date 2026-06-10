@@ -1,57 +1,13 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { PublicClient } from "viem";
 
-// Re-export of viem's getContractEvents return shape for one event - components
-// import GetContractEventsReturnType<TAbi, TEventName> directly from viem when
-// they need precise typing on chunked event reads.
-
-/**
- * Fetch contract events across a wide block range by splitting into chunks.
- * Public RPCs cap eth_getLogs at 1k-10k blocks; we hit them in parallel and merge.
- * Failed chunks are silently dropped so a single transient error doesn't blank the table.
- *
- * Caller-provided generic R is the row shape returned by viem's typed getContractEvents
- * for the specific abi/eventName combination - pass it explicitly at the call site.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// EMERGENCY KILL-SWITCH (2026-06-09 launch day): the on-chain getLogs fallback
-// was burning ~9.4M Infura credits/day (82% of the daily quota) - eth_getLogs is
-// the priciest method, and a 1.5s indexer probe that timed out under launch load
-// made every visitor/tab fall back to a per-poll 10-chunk getLogs scan. The
-// indexer itself is healthy, so disable the fallback entirely: tables read from
-// the Ponder GraphQL (hits Fly, not Infura) and show stale/empty if it is down,
-// instead of hammering Infura. Flip back to false post-launch (git revert).
-const GETLOGS_FALLBACK_DISABLED = true;
-
-export async function getEventsChunked<R = any>(
-  client: PublicClient,
-  params: Record<string, unknown>,
-  options: { totalRange?: bigint; chunkSize?: bigint; fromBlock?: bigint } = {}
-): Promise<R[]> {
-  if (GETLOGS_FALLBACK_DISABLED) return [];
-  const totalRange = options.totalRange ?? 50_000n;
-  const chunkSize = options.chunkSize ?? 9_000n;
-  const latest = await client.getBlockNumber();
-  // Lower bound: explicit fromBlock wins over rolling window.
-  const start = options.fromBlock !== undefined
-    ? (options.fromBlock < latest ? options.fromBlock : latest)
-    : (latest > totalRange ? latest - totalRange : 0n);
-  const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
-  for (let from = start; from <= latest; from += chunkSize) {
-    const to = from + chunkSize - 1n > latest ? latest : from + chunkSize - 1n;
-    ranges.push({ fromBlock: from, toBlock: to });
-  }
-  const settled = await Promise.allSettled(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ranges.map((r) => (client.getContractEvents as any)({ ...params, ...r }))
-  );
-  const out: R[] = [];
-  for (const s of settled) {
-    if (s.status === "fulfilled") out.push(...(s.value as R[]));
-  }
-  return out;
-}
+// NOTE: the on-chain getLogs fallback (getEventsChunked) was REMOVED for good
+// after launch day 2026-06-09: it burned 82% of the daily Infura quota in ~1h
+// (eth_getLogs is the priciest method and it scaled per visitor tab). Tables are
+// indexer-only now - the browser reaches the Ponder indexer through the
+// same-origin /api/indexer proxy (reachable wherever the site itself is), and
+// when the indexer is down they say "temporarily unavailable" honestly instead
+// of hammering the RPC. See obsidian/INCIDENTS.md (INC-1, INC-2).
 
 /**
  * Tailwind class merger - combines clsx for conditional logic with tailwind-merge for conflict resolution.

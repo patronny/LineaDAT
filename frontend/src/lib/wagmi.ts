@@ -50,7 +50,6 @@ const FALLBACK_FACTORY  = "0x8498c8542ea2d9BC0CeD3d21EF22d43Dea750A1B";
 const FALLBACK_STRATEGY = "0x615937AE1eB71248DA407F39AcFea9288CF1784F";
 const FALLBACK_BOT      = "0x8FC3c32fd69D714413C1ecD66FA4067b08eE3532";
 const FALLBACK_HOOK     = "0x512dd6871eb3a28aD07885A9B75a2e26eDa2a444";
-const FALLBACK_SWAPPER  = "0x1e4B059b392a8eCee33bCf2D7463D2F201835F91";
 const FALLBACK_FAUCET   = "0x50910c9cA9262051f3697Ab09450773287516c6E";
 
 function addressOrFallback(envVar: string | undefined, fallback: string): `0x${string}` {
@@ -66,7 +65,6 @@ export const ADDR = {
   strategy: addressOrFallback(process.env.NEXT_PUBLIC_STRATEGY_ADDRESS, FALLBACK_STRATEGY),
   bot:      addressOrFallback(process.env.NEXT_PUBLIC_BOT_ADDRESS,      FALLBACK_BOT),
   hook:     addressOrFallback(process.env.NEXT_PUBLIC_HOOK_ADDRESS,     FALLBACK_HOOK),
-  swapper:  addressOrFallback(process.env.NEXT_PUBLIC_SWAPPER_ADDRESS,  FALLBACK_SWAPPER),
   faucet:   addressOrFallback(process.env.NEXT_PUBLIC_FAUCET_ADDRESS,   FALLBACK_FAUCET),
 } as const;
 
