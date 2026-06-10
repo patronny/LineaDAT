@@ -101,14 +101,14 @@ export function SwapCard() {
 
   const { data: ethBalance, refetch: refetchEth } = useBalance({
     address,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   const { data: linBal, refetch: refetchLin } = useReadContract({
     address: ADDR.strategy,
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   // ERC20 allowance of the token to Permit2 (first leg of the sell approval).
   const { data: tokenToPermit2, refetch: refetchTokenAllow } = useReadContract({
@@ -116,7 +116,7 @@ export function SwapCard() {
     abi: erc20Abi,
     functionName: "allowance",
     args: address ? [address, PERMIT2] : undefined,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   // Permit2 allowance granted to the Universal Router (second leg). Returns (amount, expiration, nonce).
   const { data: permit2ToRouter, refetch: refetchPermit2Allow } = useReadContract({
@@ -124,7 +124,7 @@ export function SwapCard() {
     abi: permit2Abi,
     functionName: "allowance",
     args: address ? [address, ADDR.strategy, UNIVERSAL_ROUTER] : undefined,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   const { data: stats } = useStrategyStats();
   // Current decaying protocol fee, from the shared snapshot. Fall back to launch defaults.
@@ -207,7 +207,7 @@ export function SwapCard() {
           },
         ]
       : undefined,
-    query: { enabled: valid && amountWei > 0n, refetchInterval: 12_000 },
+    query: { enabled: valid && amountWei > 0n, refetchInterval: 30_000 },
   });
   const quotedOut = quoteData ? (quoteData[0] as bigint) : 0n;
   const minOut = quotedOut > 0n ? applySlippage(quotedOut) : 0n;

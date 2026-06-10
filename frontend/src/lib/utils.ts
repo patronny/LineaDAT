@@ -15,11 +15,21 @@ import type { PublicClient } from "viem";
  * for the specific abi/eventName combination - pass it explicitly at the call site.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// EMERGENCY KILL-SWITCH (2026-06-09 launch day): the on-chain getLogs fallback
+// was burning ~9.4M Infura credits/day (82% of the daily quota) - eth_getLogs is
+// the priciest method, and a 1.5s indexer probe that timed out under launch load
+// made every visitor/tab fall back to a per-poll 10-chunk getLogs scan. The
+// indexer itself is healthy, so disable the fallback entirely: tables read from
+// the Ponder GraphQL (hits Fly, not Infura) and show stale/empty if it is down,
+// instead of hammering Infura. Flip back to false post-launch (git revert).
+const GETLOGS_FALLBACK_DISABLED = true;
+
 export async function getEventsChunked<R = any>(
   client: PublicClient,
   params: Record<string, unknown>,
   options: { totalRange?: bigint; chunkSize?: bigint; fromBlock?: bigint } = {}
 ): Promise<R[]> {
+  if (GETLOGS_FALLBACK_DISABLED) return [];
   const totalRange = options.totalRange ?? 50_000n;
   const chunkSize = options.chunkSize ?? 9_000n;
   const latest = await client.getBlockNumber();

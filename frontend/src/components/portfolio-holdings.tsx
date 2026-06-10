@@ -67,7 +67,7 @@ export function PortfolioHoldings() {
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   const { data: stats } = useStrategyStats();
   const ethUsd = useEthPrice();

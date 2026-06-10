@@ -107,7 +107,7 @@ export function useHoldingsTotals(): {
       functionName: "onSale" as const,
       args: [r.bagId],
     })),
-    query: { enabled: rows.length > 0, refetchInterval: 12_000 },
+    query: { enabled: rows.length > 0, refetchInterval: 30_000 },
   });
 
   const live = rows
@@ -149,7 +149,7 @@ export function HoldingsTable() {
       functionName: "onSale" as const,
       args: [r.bagId],
     })),
-    query: { enabled: rows.length > 0, refetchInterval: 12_000 },
+    query: { enabled: rows.length > 0, refetchInterval: 30_000 },
   });
 
   const liveRows = rows

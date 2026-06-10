@@ -50,14 +50,14 @@ export function ActionsCard() {
     abi: erc20Abi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   const { data: tlineaAllowance, refetch: refetchTAllow } = useReadContract({
     address: ADDR.tLINEA,
     abi: erc20Abi,
     functionName: "allowance",
     args: address ? [address, ADDR.strategy] : undefined,
-    query: { enabled: !!address, refetchInterval: 12_000 },
+    query: { enabled: !!address, refetchInterval: 30_000 },
   });
   const { data: lastFaucet, refetch: refetchLastFaucet } = useReadContract({
     address: ADDR.faucet,
