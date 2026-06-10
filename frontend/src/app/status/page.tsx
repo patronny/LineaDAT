@@ -16,9 +16,12 @@ import { Footer } from "@/components/footer";
  * Auto-refreshes every 5s. Read-only; all data is public on-chain + service liveness.
  */
 
-const KEEPER_STATUS_URL =
-  process.env.NEXT_PUBLIC_KEEPER_STATUS_URL || "https://lineadat-keeper.fly.dev/status";
-const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL || "";
+// Same-origin proxies (see app/api/keeper-status + app/api/indexer): the browser
+// can't reach fly.dev from sanctioned regions (e.g. Belarus), so both Fly calls
+// route through Vercel. GET /api/indexer proxies the indexer /healthz; POST
+// proxies GraphQL - so the /healthz replace below is a no-op and resolves to GET.
+const KEEPER_STATUS_URL = "/api/keeper-status";
+const INDEXER_URL = "/api/indexer";
 const RPC = process.env.NEXT_PUBLIC_LINEA_RPC_URL || "https://rpc.linea.build";
 const REFRESH_MS = 5000;
 const MAX_SUPPLY = 1_000_000_000n * 10n ** 18n;

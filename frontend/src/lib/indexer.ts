@@ -2,24 +2,30 @@
  * Thin GraphQL client for the on-chainDAT / LineaDAT Ponder indexer
  * (testnet phase: still indexes the deployed $LINEASTR strategy on Base Sepolia).
  *
- * Indexer source: automation/indexer/. Deployed at NEXT_PUBLIC_INDEXER_URL
- * (default https://lineastr-indexer.fly.dev/graphql - Fly app name kept on
- * the legacy `lineastr-` prefix to avoid a live data migration; will be
- * renamed in Phase 4 alongside the mainnet relaunch). Schema covers two
- * tables: `bag` (BoughtByProtocol+SoldByProtocol joined by bagId) and
- * `swap` (hook Trade events).
+ * Indexer source: automation/indexer/, deployed on Fly. The browser reaches
+ * it through the same-origin /api/indexer proxy (see INDEXER_URL below); the
+ * real Fly URL lives server-side in INDEXER_URL / NEXT_PUBLIC_INDEXER_URL env.
+ * Schema covers two tables: `bag` (BoughtByProtocol+SoldByProtocol joined by
+ * bagId) and `swap` (hook Trade events).
  *
  * No Apollo / urql / SWR pulled in - one tiny POST helper is enough; React
  * components manage their own loading state via useEffect + setInterval.
  */
 
-export const INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ?? "https://lineastr-indexer.fly.dev/graphql";
+// Same-origin proxy (frontend/src/app/api/indexer). The browser MUST NOT hit
+// the Fly indexer directly: fly.dev is unreachable from sanctioned regions
+// (e.g. Belarus), which blanked swaps/bags/sales/24h-volume/24h-change there.
+// The proxy route forwards to the real indexer server-side (server-only env).
+export const INDEXER_URL = "/api/indexer";
 
 export const INDEXER_ENABLED = !!INDEXER_URL && !INDEXER_URL.includes("disabled");
 
-const INDEXER_TIMEOUT_MS = 4_000;
-const PROBE_TIMEOUT_MS = 1_500;
+// Raised 2026-06-09 (launch): under launch load the indexer GraphQL occasionally
+// exceeded the old 1.5s probe / 4s fetch timeouts, flipping `usable` false and
+// (previously) triggering the expensive on-chain getLogs fallback. Be patient with
+// a healthy-but-busy indexer so we stay on cheap GraphQL instead.
+const INDEXER_TIMEOUT_MS = 8_000;
+const PROBE_TIMEOUT_MS = 6_000;
 const CACHE_TTL_MS = 10_000;
 
 export type BagRow = {
