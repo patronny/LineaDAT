@@ -113,7 +113,7 @@ const rightSections: DraggableSection[] = [
   {
     id: "pool-liquidity",
     title: "Liquidity Pool",
-    subtitle: "Live $LINEADAT / $ETH composition of the Uniswap v4 pool.",
+    subtitle: "Live $LINEADAT / $ETH Uniswap v4 pool.",
     render: () => <PoolLiquidityCard />,
   },
   { id: "bot-intent", title: <BotIntentTitle />, render: () => <BotIntentCard /> },
