@@ -32,6 +32,12 @@ type DatEntry = {
   metrics: Record<SortKey, number>;
 };
 
+const NETWORK_LABELS: Record<Exclude<Network, "all">, string> = {
+  linea: "Linea",
+  base: "Base",
+  hyperevm: "HyperEVM",
+};
+
 const DATS: DatEntry[] = [
   {
     address: ADDR.strategy,
@@ -157,7 +163,7 @@ export function DatsExplorer() {
             ]}
           />
           <FilterSelect<Scope>
-            label="Scope"
+            label="Role"
             value={scope}
             onChange={setScope}
             options={[
@@ -182,12 +188,6 @@ export function DatsExplorer() {
       </div>
 
       <main className="container py-10 sm:py-16 min-h-[calc(100vh-3.5rem)]">
-        <h1 className="text-3xl sm:text-4xl font-display font-bold mb-2">DATs</h1>
-        <p className="text-muted-foreground mb-8">
-          Every side DAT automatically pays 1% of its entire trading volume to buy back and burn
-          the main DAT of its network, on every single trade. On Linea the main DAT is $LINEADAT.
-        </p>
-
         {visible.length === 0 ? (
           <p className="text-sm text-muted-foreground py-12 text-center border border-dashed border-border rounded-md">
             {network === "base"
@@ -205,8 +205,9 @@ export function DatsExplorer() {
                   <tr>
                     <th className="text-left py-3 pr-4 font-medium uppercase tracking-wider">DAT</th>
                     <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Type</th>
-                    <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Scope</th>
-                    <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Backed by</th>
+                    <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Role</th>
+                    <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Chain</th>
+                    <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Base asset</th>
                     <th className="text-right py-3 px-4 font-medium uppercase tracking-wider">Bag size</th>
                     <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Contract</th>
                     <th className="text-right py-3 pl-4 font-medium"></th>
@@ -223,7 +224,8 @@ export function DatsExplorer() {
                       </td>
                       <td className="py-4 px-4"><TypeBadge type={s.type} /></td>
                       <td className="py-4 px-4"><ScopeBadge scope={s.scope} /></td>
-                      <td className="py-4 px-4 font-mono">{s.underlying}</td>
+                      <td className="py-4 px-4">{NETWORK_LABELS[s.network]}</td>
+                      <td className="py-4 px-4 font-mono">${s.underlying}</td>
                       <td className="py-4 px-4 text-right font-mono tabular">{s.bagSize}</td>
                       <td className="py-4 px-4">
                         <span className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
@@ -255,7 +257,8 @@ export function DatsExplorer() {
                     </span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Backed by {s.underlying} · {s.bagSize} per bag
+                    {NETWORK_LABELS[s.network]} · {s.bagSize}{" "}
+                    <span className="font-mono">${s.underlying}</span> per bag
                   </div>
                   <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
                     <span title={s.address}>{shortAddress(s.address, 8)}</span>
