@@ -112,6 +112,13 @@ export function BotIntentCard() {
   const bagTokens = Number(bagSize) / 1e18;
   const bagUsd = ethUsd > 0 ? (Number(bagMarketPriceEth) / 1e18) * ethUsd : 0;
   const lineaUsd = bagUsd > 0 && bagTokens > 0 ? bagUsd / bagTokens : 0;
+  // Bid USD: green neon once the bid can cover the bag's market price, neon
+  // pink while it still falls short - an at-a-glance "will it buy?" signal.
+  const bidUsd = ethUsd > 0 ? (Number(availableFunds) / 1e18) * ethUsd : 0;
+  const bidCovers = bagUsd > 0 && bidUsd >= bagUsd;
+  const bidStyle = bidCovers
+    ? { color: "rgb(74, 222, 128)", textShadow: "0 0 6px rgba(74,222,128,0.85), 0 0 14px rgba(74,222,128,0.5)" }
+    : { color: "hsl(320 100% 60%)", textShadow: "0 0 6px hsla(320,100%,60%,0.85), 0 0 14px hsla(320,100%,60%,0.5)" };
   return (
     <div className="p-4 sm:p-5 space-y-3">
       <div className="text-3xl font-display font-bold tabular">
@@ -130,7 +137,14 @@ export function BotIntentCard() {
       </div>
       <div className="border-t border-border pt-3 flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Current bid</span>
-        <span className="font-mono tabular">{formatEth(availableFunds)} ETH</span>
+        <span className="font-mono tabular">
+          {formatEth(availableFunds)} ETH
+          {bidUsd > 0 ? (
+            <span className="ml-1.5 font-semibold" style={bidStyle}>
+              (~${bidUsd.toLocaleString("en-US", { maximumFractionDigits: bidUsd >= 100 ? 0 : 2 })})
+            </span>
+          ) : null}
+        </span>
       </div>
     </div>
   );
