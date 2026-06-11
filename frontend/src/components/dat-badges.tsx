@@ -56,6 +56,18 @@ function BadgePill({
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
+        onClick={(e) => {
+          // The pills sit inside clickable /dats rows: a tap must open the
+          // tooltip, NOT trigger the row's navigation (mobile especially).
+          e.stopPropagation();
+          show(e);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.stopPropagation();
+            show(e);
+          }
+        }}
         className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase cursor-help focus-visible:ring-2 focus-visible:ring-primary ${pillClass}`}
       >
         {label}
