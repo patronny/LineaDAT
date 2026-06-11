@@ -2,6 +2,7 @@
 
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBagMarketPriceEth } from "@/hooks/useBagMarketPriceEth";
+import { useEthPrice } from "@/hooks/useEthPrice";
 import { formatEth, formatTokens } from "@/lib/utils";
 import { UNDERLYING_SYMBOL } from "@/lib/wagmi";
 
@@ -70,17 +71,38 @@ export function BotIntentTitle() {
 }
 
 /**
- * Card body - only the headline bag size + current bid. Intent text lives in
- * the card title now (BotIntentTitle).
+ * Card body - headline bag size with its live USD value, the $LINEA price, and
+ * the current bid. Intent text lives in the card title now (BotIntentTitle).
+ *
+ * USD figures: bagMarketPriceEth (Etherex quoter, ETH cost of one bag) x
+ * ETH/USD (DefiLlama) - the same sources the rest of the dashboard uses.
  */
 export function BotIntentCard() {
-  // "Current bid" = availableFunds (the ramped ETH the protocol actually bids for the
-  // next bag), NOT currentFees (the full pot, shown in FundingsCard as "currently holding").
-  // These differ while the buy ramp lags accrued fees; previously both read currentFees.
-  const { availableFunds, bagSize } = useFundingsData();
+  // "Current bid" = availableFunds = min(currentFees, getMaxPriceForBuy()) on-chain,
+  // i.e. the accrued pot CAPPED by the 0.005 ETH/block buy ramp - the ETH the
+  // protocol can actually spend right now. The two coincide whenever the ramp
+  // has outgrown the pot (most of the time between buys).
+  const { availableFunds, bagSize, bagMarketPriceEth } = useFundingsData();
+  const ethUsd = useEthPrice();
+  const bagTokens = Number(bagSize) / 1e18;
+  const bagUsd = ethUsd > 0 ? (Number(bagMarketPriceEth) / 1e18) * ethUsd : 0;
+  const lineaUsd = bagUsd > 0 && bagTokens > 0 ? bagUsd / bagTokens : 0;
   return (
     <div className="p-4 sm:p-5 space-y-3">
-      <div className="text-3xl font-display font-bold tabular">{formatTokens(bagSize)} {UNDERLYING_SYMBOL}</div>
+      <div className="text-3xl font-display font-bold tabular">
+        {formatTokens(bagSize)} {UNDERLYING_SYMBOL}
+        {bagUsd > 0 ? (
+          <span className="text-base font-mono font-normal text-muted-foreground ml-2">
+            (~${bagUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })})
+          </span>
+        ) : null}
+      </div>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">${UNDERLYING_SYMBOL} price</span>
+        <span className="font-mono tabular">
+          {lineaUsd > 0 ? `$${lineaUsd.toLocaleString("en-US", { maximumFractionDigits: 5 })}` : "-"}
+        </span>
+      </div>
       <div className="border-t border-border pt-3 flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Current bid</span>
         <span className="font-mono tabular">{formatEth(availableFunds)} ETH</span>

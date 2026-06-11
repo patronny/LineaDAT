@@ -128,6 +128,7 @@ export async function GET(req: Request) {
         { address: ADDR.hook, abi: hookAbi, functionName: "deploymentTime", args: [STRATEGY] },
         { address: ADDR.hook, abi: hookAbi, functionName: "calculateFee", args: [STRATEGY, true] },
         { address: ADDR.hook, abi: hookAbi, functionName: "calculateFee", args: [STRATEGY, false] },
+        { address: STRATEGY, abi: strategyAbi, functionName: "balanceOf", args: [POOL_MANAGER_ADDR] },
       ],
     });
 
@@ -190,6 +191,7 @@ export async function GET(req: Request) {
       deploymentTime: big(18),
       feeBuy: big(19),
       feeSell: big(20),
+      poolLineadat: big(21),
       blockNumber: blockNumber.toString(),
       bagMarketPriceWei: bagMarketPriceWei.toString(),
     };

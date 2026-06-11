@@ -7,6 +7,7 @@ import { SalesTable, useSalesTotals } from "./sales-table";
 import { PaginatedSwapsTable } from "./paginated-swaps-table";
 import { SwapCard } from "./swap-card";
 import { FundingsCard, BotIntentCard, BotIntentTitle, ProgressCard, ProgressTitle } from "./fundings-card";
+import { PoolLiquidityCard } from "./pool-liquidity-card";
 import { BurnedCard } from "./burned-card";
 import { ActionsCard } from "./actions-card";
 import { formatEth, formatTokens } from "@/lib/utils";
@@ -109,6 +110,12 @@ const leftSections: DraggableSection[] = [
 const rightSections: DraggableSection[] = [
   { id: "swap", title: "Swap", render: () => <SwapCard /> },
   { id: "fundings", title: "Fundings", render: () => <FundingsCard /> },
+  {
+    id: "pool-liquidity",
+    title: "Liquidity Pool",
+    subtitle: "Live $LINEADAT / $ETH composition of the Uniswap v4 pool.",
+    render: () => <PoolLiquidityCard />,
+  },
   { id: "bot-intent", title: <BotIntentTitle />, render: () => <BotIntentCard /> },
   { id: "progress", title: <ProgressTitle />, render: () => <ProgressCard /> },
   { id: "burned", title: "Burned amount", render: () => <BurnedCard /> },
@@ -126,20 +133,21 @@ export function StrategyDashboard() {
       {/* Mobile: single grid, Swap forced to top via custom mobile order */}
       <div className="lg:hidden">
         <DraggableGrid
-          storageKey="lineastr.dashboard.mobile.v2"
+          storageKey="lineastr.dashboard.mobile.v3"
           sections={[...rightSections.slice(0, 1), ...leftSections, ...rightSections.slice(1)]}
         />
       </div>
 
       {/* Desktop: 2-col grid, each column independently sortable.
-          Storage keys bumped to v2 so existing users get the new default order
-          (actions last, burned second-from-last, plus the split fundings cards). */}
+          Right + mobile storage keys bumped to v3 so existing users get the new
+          default order with the Liquidity Pool card right under Fundings
+          (the grid otherwise appends unknown ids at the end of a saved order). */}
       <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
         <div className="lg:col-span-2">
           <DraggableGrid storageKey="lineastr.dashboard.left.v2" sections={leftSections} />
         </div>
         <div>
-          <DraggableGrid storageKey="lineastr.dashboard.right.v2" sections={rightSections} />
+          <DraggableGrid storageKey="lineastr.dashboard.right.v3" sections={rightSections} />
         </div>
       </div>
     </>

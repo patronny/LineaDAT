@@ -31,6 +31,7 @@ export type Snapshot = {
   deploymentTime: bigint;
   feeBuy: bigint;
   feeSell: bigint;
+  poolLineadat: bigint;
   blockNumber: bigint;
   bagMarketPriceWei: bigint;
 };
@@ -69,6 +70,7 @@ async function fetchSnapshot(): Promise<Snapshot> {
     deploymentTime: b("deploymentTime"),
     feeBuy: b("feeBuy"),
     feeSell: b("feeSell"),
+    poolLineadat: b("poolLineadat"),
     blockNumber: b("blockNumber"),
     bagMarketPriceWei: b("bagMarketPriceWei"),
   };
