@@ -75,6 +75,7 @@ export function Footer() {
                 <>
                   <li>Linea</li>
                   <li>Base (coming soon)</li>
+                  <li>HyperEVM (coming soon)</li>
                 </>
               ) : (
                 <>

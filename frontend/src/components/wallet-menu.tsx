@@ -15,8 +15,8 @@ const LIVE_NETWORK =
     : { id: 84532, name: "Base Sepolia" };
 const COMING_SOON_NETWORKS =
   DEFAULT_CHAIN_ID === 59144
-    ? ["Base (coming soon)"]
-    : ["Linea (coming soon)", "Base (coming soon)"];
+    ? ["Base (coming soon)", "HyperEVM (coming soon)"]
+    : ["Linea (coming soon)", "Base (coming soon)", "HyperEVM (coming soon)"];
 
 /**
  * Custom wallet UI that wraps RainbowKit's connect/chain logic but renders our
