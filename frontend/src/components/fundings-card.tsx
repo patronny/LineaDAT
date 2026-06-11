@@ -3,6 +3,7 @@
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useBagMarketPriceEth } from "@/hooks/useBagMarketPriceEth";
 import { useEthPrice } from "@/hooks/useEthPrice";
+import { useHoldingsTotals } from "./holdings-table";
 import { formatEth, formatTokens } from "@/lib/utils";
 import { UNDERLYING_SYMBOL } from "@/lib/wagmi";
 
@@ -32,21 +33,27 @@ function useFundingsData() {
 /**
  * Card title: "Fundings (~$452)" - the live USD value of EVERYTHING the
  * treasury holds right now: the ETH fee pot (currentFees) plus all $LINEA
- * bags (treasuryUnderlying), priced via the Etherex bag quote x ETH/USD.
+ * bags AT THEIR LIST PRICE (sum of each bag's 1.2x relist price from the
+ * Holdings table, x ETH/USD). Owner decision 2026-06-11: the DAT only ever
+ * realizes a bag for its list price, so that - not the live market quote -
+ * is what the bags are worth, per bag, regardless of where the market moves.
  */
 export function FundingsTitle() {
-  const { currentFees, treasuryUnderlying, bagSize, bagMarketPriceEth } = useFundingsData();
+  const { currentFees } = useFundingsData();
+  const { totalListed } = useHoldingsTotals();
   const ethUsd = useEthPrice();
-  const bagTokens = Number(bagSize) / 1e18;
-  const lineaUsd =
-    bagTokens > 0 && ethUsd > 0 ? ((Number(bagMarketPriceEth) / 1e18) * ethUsd) / bagTokens : 0;
-  const totalUsd =
-    (Number(currentFees) / 1e18) * ethUsd + (Number(treasuryUnderlying) / 1e18) * lineaUsd;
+  const totalUsd = ((Number(currentFees) + Number(totalListed)) / 1e18) * ethUsd;
   return (
     <span>
       Fundings
       {totalUsd > 0 ? (
-        <span className="font-mono font-normal text-muted-foreground ml-2">
+        <span
+          className="font-mono font-normal ml-2"
+          style={{
+            color: "rgb(74, 222, 128)",
+            textShadow: "0 0 6px rgba(74,222,128,0.85), 0 0 14px rgba(74,222,128,0.5)",
+          }}
+        >
           (~${totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })})
         </span>
       ) : null}
