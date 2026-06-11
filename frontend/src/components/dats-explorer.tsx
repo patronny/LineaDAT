@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink } from "lucide-react";
-import { Button } from "./ui/button";
 import { ADDR, UNDERLYING_SYMBOL, addressUrl } from "@/lib/wagmi";
 import { shortAddress } from "@/lib/utils";
 import { LineaDatSquareIcon } from "./icons/token-icons";
@@ -125,6 +124,7 @@ function ContractActions({ address }: { address: string }) {
  * sorting becomes meaningful once a second DAT ships (see DatEntry.metrics).
  */
 export function DatsExplorer() {
+  const router = useRouter();
   const [network, setNetwork] = useState<Network>("all");
   const [type, setType] = useState<DatType>("all");
   const [scope, setScope] = useState<Scope>("all");
@@ -210,12 +210,21 @@ export function DatsExplorer() {
                     <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Base asset</th>
                     <th className="text-right py-3 px-4 font-medium uppercase tracking-wider">Bag size</th>
                     <th className="text-left py-3 px-4 font-medium uppercase tracking-wider">Contract</th>
-                    <th className="text-right py-3 pl-4 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {visible.map((s) => (
-                    <tr key={s.address}>
+                    <tr
+                      key={s.address}
+                      onClick={() => router.push(`/dats/${s.address}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") router.push(`/dats/${s.address}`);
+                      }}
+                      tabIndex={0}
+                      role="link"
+                      aria-label={`Open ${s.name} DAT page`}
+                      className="cursor-pointer transition-colors hover:bg-secondary/25 focus-visible:bg-secondary/25 focus-visible:outline-none"
+                    >
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
                           <LineaDatSquareIcon className="w-9 h-9 flex-shrink-0" />
@@ -228,15 +237,16 @@ export function DatsExplorer() {
                       <td className="py-4 px-4 font-mono">${s.underlying}</td>
                       <td className="py-4 px-4 text-right font-mono tabular">{s.bagSize}</td>
                       <td className="py-4 px-4">
-                        <span className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                        {/* stopPropagation: copying the address / opening the explorer
+                            must not also trigger the row's navigation */}
+                        <span
+                          className="flex items-center gap-2 font-mono text-xs text-muted-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
                           <span title={s.address}>{shortAddress(s.address)}</span>
                           <ContractActions address={s.address} />
                         </span>
-                      </td>
-                      <td className="py-4 pl-4 text-right">
-                        <Button asChild size="sm">
-                          <Link href={`/dats/${s.address}` as never}>View DAT</Link>
-                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -247,7 +257,17 @@ export function DatsExplorer() {
             {/* Mobile: borderless stacked rows */}
             <ul className="md:hidden divide-y divide-border">
               {visible.map((s) => (
-                <li key={s.address} className="py-4 space-y-2">
+                <li
+                  key={s.address}
+                  onClick={() => router.push(`/dats/${s.address}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") router.push(`/dats/${s.address}`);
+                  }}
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`Open ${s.name} DAT page`}
+                  className="py-4 space-y-2 cursor-pointer transition-colors hover:bg-secondary/25 active:bg-secondary/25 focus-visible:bg-secondary/25 focus-visible:outline-none"
+                >
                   <div className="flex items-center gap-3">
                     <LineaDatSquareIcon className="w-9 h-9 flex-shrink-0" />
                     <span className="font-display font-bold text-base">{s.name}</span>
@@ -260,13 +280,15 @@ export function DatsExplorer() {
                     {NETWORK_LABELS[s.network]} · {s.bagSize}{" "}
                     <span className="font-mono">${s.underlying}</span> per bag
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                  {/* stopPropagation: copy / explorer taps must not navigate the row */}
+                  <div
+                    className="flex items-center gap-2 text-xs font-mono text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
                     <span title={s.address}>{shortAddress(s.address, 8)}</span>
                     <ContractActions address={s.address} />
                   </div>
-                  <Button asChild size="sm" className="w-full">
-                    <Link href={`/dats/${s.address}` as never}>View DAT</Link>
-                  </Button>
                 </li>
               ))}
             </ul>
