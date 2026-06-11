@@ -30,6 +30,31 @@ function useFundingsData() {
 }
 
 /**
+ * Card title: "Fundings (~$452)" - the live USD value of EVERYTHING the
+ * treasury holds right now: the ETH fee pot (currentFees) plus all $LINEA
+ * bags (treasuryUnderlying), priced via the Etherex bag quote x ETH/USD.
+ */
+export function FundingsTitle() {
+  const { currentFees, treasuryUnderlying, bagSize, bagMarketPriceEth } = useFundingsData();
+  const ethUsd = useEthPrice();
+  const bagTokens = Number(bagSize) / 1e18;
+  const lineaUsd =
+    bagTokens > 0 && ethUsd > 0 ? ((Number(bagMarketPriceEth) / 1e18) * ethUsd) / bagTokens : 0;
+  const totalUsd =
+    (Number(currentFees) / 1e18) * ethUsd + (Number(treasuryUnderlying) / 1e18) * lineaUsd;
+  return (
+    <span>
+      Fundings
+      {totalUsd > 0 ? (
+        <span className="font-mono font-normal text-muted-foreground ml-2">
+          (~${totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })})
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
  * "$LINEADAT is currently holding X ETH" + boxed "+ N $tLINEA" pill below.
  * Pill mirrors the WBTCSTR reference: bordered, rounded, slightly tinted bg.
  */
