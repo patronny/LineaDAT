@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { ADDR, UNDERLYING_SYMBOL, addressUrl } from "@/lib/wagmi";
 import { shortAddress } from "@/lib/utils";
 import { LineaDatSquareIcon } from "./icons/token-icons";
+import { TypeBadge, ScopeBadge } from "./dat-badges";
 
 type Network = "all" | "linea" | "base" | "hyperevm";
 type DatType = "all" | "classic" | "yield";
@@ -112,44 +113,6 @@ function ContractActions({ address }: { address: string }) {
   );
 }
 
-/** Type pill with a hover tooltip explaining the DAT mechanic. */
-function TypeBadge({ type }: { type: Exclude<DatType, "all"> }) {
-  const classic = type === "classic";
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase cursor-help ${
-        classic ? "bg-cyan-500/15 text-cyan-400" : "bg-amber-500/15 text-amber-400"
-      }`}
-      title={
-        classic
-          ? "Classic DAT: the treasury buys bags of the underlying and relists them at a 1.2x markup; the profit buys back and burns the token."
-          : "Yield DAT: the treasury never sells - it earns yield on its holdings and once a week uses the income to buy back and burn its token."
-      }
-    >
-      {classic ? "Classic" : "Yield"}
-    </span>
-  );
-}
-
-/** Scope pill: flagship (main) vs side DATs that feed the $LINEADAT burn. */
-function ScopeBadge({ scope }: { scope: Exclude<Scope, "all"> }) {
-  const main = scope === "main";
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase cursor-help ${
-        main ? "bg-pink-500/15 text-pink-400" : "bg-purple-500/15 text-purple-400"
-      }`}
-      title={
-        main
-          ? "Main DAT: the flagship of the platform - side DATs buy back and burn its token."
-          : "Side DAT: pays 1% of its entire trading volume to buy back and burn $LINEADAT on every trade."
-      }
-    >
-      {main ? "Main" : "Side"}
-    </span>
-  );
-}
-
 /**
  * /dats content: full-bleed filter bar (network / type / scope / sort) right
  * under the site header, then the borderless DAT table. Filters work today;
@@ -221,8 +184,8 @@ export function DatsExplorer() {
       <main className="container py-10 sm:py-16 min-h-[calc(100vh-3.5rem)]">
         <h1 className="text-3xl sm:text-4xl font-display font-bold mb-2">DATs</h1>
         <p className="text-muted-foreground mb-8">
-          Every DAT besides the flagship $LINEADAT automatically pays 1% of its entire trading
-          volume to buy back and burn $LINEADAT, on every single trade.
+          Every side DAT automatically pays 1% of its entire trading volume to buy back and burn
+          the main DAT of its network, on every single trade. On Linea the main DAT is $LINEADAT.
         </p>
 
         {visible.length === 0 ? (

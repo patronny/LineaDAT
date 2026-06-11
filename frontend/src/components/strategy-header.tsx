@@ -10,6 +10,7 @@ import { useEthPrice } from "@/hooks/useEthPrice";
 import { usePriceChange24h } from "@/hooks/usePriceChange24h";
 import { ADDR, addressUrl } from "@/lib/wagmi";
 import { lineastrPriceInEth } from "@/lib/utils";
+import { TypeBadge, ScopeBadge } from "./dat-badges";
 
 /**
  * Big strategy header card matching tokenstrategy.com reference.
@@ -102,6 +103,8 @@ export function StrategyHeader() {
                 <LineaIcon className="w-3.5 h-3.5" />
                 Linea
               </span>
+              <TypeBadge type="classic" />
+              <ScopeBadge scope="main" />
               <a
                 href={addressUrl(ADDR.strategy)}
                 target="_blank"
