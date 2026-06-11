@@ -2,7 +2,7 @@
 
 import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { useEthPrice } from "@/hooks/useEthPrice";
-import { formatTokens, sqrtPriceX96ToRatio } from "@/lib/utils";
+import { formatTokens } from "@/lib/utils";
 import { LineaDatSquareIcon, EthIcon } from "./icons/token-icons";
 
 /**
@@ -34,15 +34,16 @@ export function PoolLiquidityCard() {
 
   const poolTokens = data?.poolLineadat ?? 0n;
   const sqrtP = Number(data?.sqrtPriceX96 ?? 0n);
-  const ratio = sqrtPriceX96ToRatio(data?.sqrtPriceX96 ?? 0n); // LINEADAT per ETH
 
   const ethInPool =
     sqrtP > 0 && sqrtP < SQRT_PB
       ? (L * (SQRT_PB - sqrtP) * Q96) / (sqrtP * SQRT_PB) / 1e18
       : 0;
-  const tokensFloat = Number(poolTokens) / 1e18;
-  const tokenUsd = ratio > 0 && ethUsd > 0 ? tokensFloat * (ethUsd / ratio) : 0;
-  const totalUsd = tokenUsd + ethInPool * ethUsd;
+  // Real money in the pool = the ETH side only. The token side is the supply
+  // itself - its market-price USD value is realizable only against this ETH,
+  // so counting it (the GeckoTerminal/CoinGecko "liquidity" convention) would
+  // overstate what actually sits in the pool. Owner decision 2026-06-11.
+  const realUsd = ethInPool * ethUsd;
 
   const loading = sqrtP === 0 || poolTokens === 0n;
 
@@ -67,10 +68,13 @@ export function PoolLiquidityCard() {
           <span className="text-muted-foreground">ETH price</span>
           <span className="font-mono tabular">{ethUsd > 0 ? fmtUsd(ethUsd, 2) : "-"}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Total liquidity</span>
+        <div
+          className="flex items-center justify-between cursor-help"
+          title="Actual ETH sitting in the pool, in USD. The token side is the supply itself - its value is realizable only against this ETH."
+        >
+          <span className="text-muted-foreground">Real liquidity</span>
           <span className="font-mono tabular font-semibold">
-            {!loading && totalUsd > 0 ? fmtUsd(totalUsd) : "-"}
+            {!loading && realUsd > 0 ? fmtUsd(realUsd) : "-"}
           </span>
         </div>
       </div>
