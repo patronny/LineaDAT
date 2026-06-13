@@ -90,6 +90,19 @@ def gql(url, query, variables=None):
         return None
 
 
+def eth_usd():
+    """Current ETH/USD from DefiLlama (free, no key, no rate limit) - the SAME
+    source the site uses (frontend/src/hooks/useEthPrice.ts). 0.0 if unavailable,
+    in which case the trades feed omits the $ figure rather than show $0."""
+    code, data = fetch("https://coins.llama.fi/prices/current/coingecko:ethereum")
+    if code == 200 and isinstance(data, dict):
+        try:
+            return float(data["coins"]["coingecko:ethereum"]["price"])
+        except Exception:
+            return 0.0
+    return 0.0
+
+
 def trades_feed(dat, dstate, trades_token):
     """Silent digest of NEW user swaps since the last run -> the shared trades bot.
 
@@ -117,16 +130,18 @@ def trades_feed(dat, dstate, trades_token):
     if not items:
         return
     sym = dat.get("symbol", dat["name"])
+    price = eth_usd()  # one fetch per digest (only when there ARE new trades)
     lines = []
     for s in items[:25]:
         emoji = "\U0001f7e2" if s["side"] == "buy" else "\U0001f534"  # green/red circle
         eth = int(s["ethAmount"]) / 1e18
         tok = int(s["tokenAmount"]) / 1e18
+        usd = f" (≈ ${eth * price:,.2f})" if price > 0 else ""
         hhmm = time.strftime("%H:%M", time.gmtime(s["timestamp"]))
         who = s["trader"][:6] + "…" + s["trader"][-4:]
         link = f'<a href="{dat.get("explorer_tx","")}{s["txHash"]}">tx</a>'
         lines.append(
-            f"{emoji} {s['side'].upper()} {eth:.4f} ETH ↔ {tok:,.0f} {sym} · {who} · {hhmm} UTC · {link}"
+            f"{emoji} {s['side'].upper()} {eth:.4f} ETH{usd} ↔ {tok:,.0f} {sym} · {who} · {hhmm} UTC · {link}"
         )
     extra = f"\n… и ещё {len(items) - 25}" if len(items) > 25 else ""
     send(trades_token, f"<b>{dat['name']}</b>\n" + "\n".join(lines) + extra, silent=True, html=True)
