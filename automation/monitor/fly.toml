@@ -1,0 +1,28 @@
+# Always-on ops monitor. Worker (no inbound http_service) - polls free
+# endpoints every MONITOR_INTERVAL_S and pushes Telegram alerts. Replaces the
+# GitHub Actions cron (throttled to ~hourly) so RPC failovers/recoveries are
+# caught within a minute. Spends ZERO Infura credits (all checks are CDN-cached
+# snapshot + Fly /status + indexer healthz/graphql).
+#
+# Deploy from repo root:
+#   fly deploy . --config automation/monitor/fly.toml
+# Secrets (set once, never in git):
+#   fly secrets set TG_CHAT_ID=... TG_TOKEN_STATUS=... TG_TOKEN_LINEADAT=... \
+#     TG_TOKEN_TRADES=... -a lineadat-monitor
+app = "lineadat-monitor"
+primary_region = "fra"
+
+[build]
+  dockerfile = "automation/monitor/Dockerfile"
+
+[env]
+  MONITOR_LOOP = "true"
+  MONITOR_INTERVAL_S = "60"
+
+# Keep exactly one instance always running; restart if the loop ever exits.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[[restart]]
+  policy = "always"

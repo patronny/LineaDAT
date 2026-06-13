@@ -9,11 +9,15 @@ Routing:
 Adding a future DAT = one entry in DATS + one TG_TOKEN_* repo secret (the
 trades feed bot is shared - messages are prefixed with the DAT name).
 
-State (previous lastBagId, alert timestamps) persists between runs via
-actions/cache on state/monitor-state.json. Alerts re-fire at most every
-REALERT_MIN while a condition stays broken; a recovery message is sent
-when it clears. All checks are free endpoints (Fly /status, CDN snapshot,
-site HTML) - the monitor never spends Infura credits.
+State (previous lastBagId, alert timestamps, active RPC) persists between
+runs. As an always-on Fly worker (MONITOR_LOOP=true) it keeps state in memory
+and polls every MONITOR_INTERVAL_S (default 60s) - this is the reliable path,
+since GitHub's scheduled cron is throttled to ~hourly and misses fast RPC
+failovers. As a one-shot GitHub Actions cron it persists via actions/cache on
+state/monitor-state.json. Alerts re-fire at most every REALERT_MIN while a
+condition stays broken; a recovery message is sent when it clears. All checks
+are free endpoints (Fly /status, CDN snapshot, site HTML) - the monitor never
+spends Infura credits.
 """
 import json
 import os
@@ -161,9 +165,13 @@ class Alerter:
             del self.alerts[key]
 
 
-def main():
+def main(state=None):
+    # GitHub one-shot: load+save file state. Fly loop: caller passes a persistent
+    # in-memory dict, so we neither load nor save a file.
+    persist = state is None
     ping = os.environ.get("PING") == "true"
-    state = load_state()
+    if persist:
+        state = load_state()
     al = Alerter(state)
     status_token = os.environ["TG_TOKEN_STATUS"]
     trades_token = os.environ.get("TG_TOKEN_TRADES", "")
@@ -172,9 +180,25 @@ def main():
     site_code, _ = fetch(SITE_URL)
     al.check(status_token, "site", site_code != 200, f"сайт on-chaindat.com отвечает {site_code or 'timeout'} (не 200)")
 
+    # Snapshot must be LIVE, not just a 200 envelope: during the 2026-06-13
+    # Infura outage the route returned a structurally-valid all-ZEROS payload
+    # (http 200, availableFunds key present = 0), so the old check thought it was
+    # fine and the Status channel never alerted while the site showed $0. Require
+    # real on-chain data (block number + a non-zero pool price).
     snap_code, snap = fetch(SNAPSHOT_URL)
-    snap_ok = snap_code == 200 and isinstance(snap, dict) and "availableFunds" in snap
-    al.check(status_token, "snapshot", not snap_ok, f"/api/snapshot сломан (http {snap_code or 'timeout'})")
+    snap_live = (
+        snap_code == 200
+        and isinstance(snap, dict)
+        and "availableFunds" in snap
+        and int(snap.get("blockNumber") or 0) > 0
+        and str(snap.get("sqrtPriceX96") or "0") not in ("0", "")
+    )
+    al.check(
+        status_token,
+        "snapshot",
+        not snap_live,
+        f"/api/snapshot отдаёт пустые/нулевые данные (http {snap_code or 'timeout'}) - вероятно все RPC недоступны, сайт покажет $0",
+    )
 
     if ping:
         send(status_token, "🧪 монитор задеплоен и работает (платформенный канал). Проверяю сайт + snapshot каждые ~5 минут.")
@@ -193,6 +217,24 @@ def main():
             al.check(token, f"{name}: keeper alive", not k.get("alive"), f"{name}: кипер сообщает alive=false")
             err = k.get("lastError")
             al.check(token, f"{name}: keeper error", bool(err), f"{name}: кипер lastError: {str(err)[:160]}")
+
+            # RPC failover / revert notifications. The keeper exposes its active
+            # RPC as e.g. "linea-mainnet.infura.io (1/4)" / "linea.drpc.org (2/4)".
+            # We alert on a HOST change: off paid Infura (outage), back to Infura
+            # (recovery), or one public dying and the next taking over.
+            rpc = str(k.get("rpc") or "").strip()
+            if rpc:
+                host = rpc.split(" ")[0]
+                prev_rpc = dstate.get("rpc")
+                prev_host = str(prev_rpc or "").split(" ")[0]
+                if prev_host and host != prev_host:
+                    if "infura" in host.lower():
+                        send(token, f"🟢 {name}: RPC вернулся на платную Infura ({rpc})")
+                    elif "infura" in prev_host.lower():
+                        send(token, f"⚠️ {name}: платная Infura недоступна - кипер ушёл на публичный RPC {rpc}")
+                    else:
+                        send(token, f"⚠️ {name}: публичный RPC сменился {prev_host} → {rpc} (предыдущий отвалился)")
+                dstate["rpc"] = rpc
             try:
                 age = time.time() - time.mktime(time.strptime(k["updatedAt"][:19], "%Y-%m-%dT%H:%M:%S"))
                 al.check(token, f"{name}: keeper stale", age > KEEPER_STALE_S, f"{name}: кипер не обновлял статус {int(age)}с (>{KEEPER_STALE_S}с) - возможно, процесс завис")
@@ -247,9 +289,30 @@ def main():
         if ping:
             send(token, f"🧪 монитор задеплоен и работает (канал {name}). Слежу за кипером, индексером, бэгами и burn'ами каждые ~5 минут.")
 
-    save_state(state)
+    if persist:
+        save_state(state)
     print("monitor run complete; alerts state:", list(state.get("alerts", {}).keys()) or "all green")
 
 
+def run_forever():
+    """Always-on Fly mode: in-memory state, poll every MONITOR_INTERVAL_S.
+    Reliable cadence (vs GitHub's ~hourly cron) so RPC failovers and recoveries
+    are caught within a minute."""
+    interval = int(os.environ.get("MONITOR_INTERVAL_S", "60"))
+    state = {"alerts": {}, "dats": {}}
+    status_token = os.environ.get("TG_TOKEN_STATUS")
+    if status_token:
+        send(status_token, f"🛰️ лайв-монитор запущен на Fly (опрос каждые {interval}с). Ловлю смену RPC, падения и восстановления в реальном времени.")
+    while True:
+        try:
+            main(state)
+        except Exception as e:  # never let one bad iteration kill the loop
+            print("monitor iteration error:", e)
+        time.sleep(interval)
+
+
 if __name__ == "__main__":
-    main()
+    if os.environ.get("MONITOR_LOOP") == "true":
+        run_forever()
+    else:
+        main()
