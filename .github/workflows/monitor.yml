@@ -4,8 +4,13 @@ name: Ops Monitor
 # Never touches Infura. See .github/scripts/monitor.py for the check list.
 
 on:
-  schedule:
-    - cron: "*/5 * * * *" # GitHub may delay to ~10-15 min under load; fine for ops
+  # Scheduled cron DISABLED 2026-06-13: GitHub throttled it to ~hourly, too slow
+  # to observe a 12s RPC failover. The PRIMARY monitor is now the always-on Fly
+  # worker `lineadat-monitor` (60s loop) - see automation/monitor/. This workflow
+  # stays as a manual one-shot backup (workflow_dispatch) only. Re-enable the
+  # schedule only if the Fly monitor is decommissioned.
+  # schedule:
+  #   - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       ping:

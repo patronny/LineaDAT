@@ -13,7 +13,7 @@ app = "lineadat-monitor"
 primary_region = "fra"
 
 [build]
-  dockerfile = "automation/monitor/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   MONITOR_LOOP = "true"
