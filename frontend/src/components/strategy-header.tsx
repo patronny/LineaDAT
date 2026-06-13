@@ -35,8 +35,8 @@ export function StrategyHeader() {
   // 24h ETH-side volume from the indexer's swap rows (one Trade event per user
   // swap - the hook's internal fee-sell round-trips are NOT counted, which is
   // why GeckoTerminal's gross pool number reads higher). Indexer-only; the
-  // on-chain getLogs fallback is gone (see lib/utils.ts) - unreachable indexer
-  // renders "-" via fmtUsdLarge(0).
+  // on-chain getLogs fallback is gone (see lib/utils.ts). null = indexer
+  // unreachable (renders "-"); 0n = genuinely no trades in 24h (renders "$0").
   const indexerVol24h = useMemo<bigint | null>(() => {
     if (!swaps.usable || !swaps.data) return null;
     const since = Math.floor(Date.now() / 1000) - 86_400;
@@ -139,8 +139,14 @@ export function StrategyHeader() {
           <Stat label="FDV" value={fmtUsdLarge(fdvUsd)} />
           <Stat
             label="24h Volume"
-            value={fmtUsdLarge(vol24hUsd)}
-            title="Trade volume (excludes protocol fee swaps), so trackers counting raw pool swaps may show a higher number"
+            value={
+              indexerVol24h === null
+                ? "-"
+                : indexerVol24h === 0n
+                  ? "$0"
+                  : fmtUsdLarge(vol24hUsd)
+            }
+            title="Trade volume (excludes protocol fee swaps), so trackers counting raw pool swaps may show a higher number. Shows $0 when there were no trades in the last 24h; a dash means the indexer is unreachable."
           />
           <Stat
             label="24h Change"
