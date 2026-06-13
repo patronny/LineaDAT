@@ -4,6 +4,7 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { baseSepolia, linea } from "wagmi/chains";
 import { http } from "viem";
 import { DEFAULT_CHAIN_ID } from "./wagmi";
+import { lineaClientTransport } from "./rpc";
 
 /**
  * Client-only wagmi + RainbowKit configuration.
@@ -27,9 +28,9 @@ const wcProjectId =
 const activeChains =
   DEFAULT_CHAIN_ID === linea.id ? ([linea] as const) : ([baseSepolia] as const);
 
-// Linea mainnet RPC = paid Infura (NEXT_PUBLIC_LINEA_RPC_URL); Infura is CORS-friendly so
-// it serves browser eth_calls directly. Base Sepolia keeps its public fallback.
-const lineaRpc = process.env.NEXT_PUBLIC_LINEA_RPC_URL || "https://rpc.linea.build";
+// Linea mainnet RPC = Infura-first fallback transport (paid frontend key, then
+// public RPCs) so a single-provider outage can't take browser reads down - see
+// lib/rpc.ts. Base Sepolia keeps its public fallback.
 const baseSepoliaRpc = process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.base.org";
 
 export const config = getDefaultConfig({
@@ -37,7 +38,7 @@ export const config = getDefaultConfig({
   projectId: wcProjectId,
   chains: activeChains,
   transports: {
-    [linea.id]: http(lineaRpc),
+    [linea.id]: lineaClientTransport(),
     [baseSepolia.id]: http(baseSepoliaRpc),
   },
   ssr: true,

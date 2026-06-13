@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPublicClient, http, formatEther } from "viem";
 import { linea, baseSepolia } from "viem/chains";
 import { ADDR, DEFAULT_CHAIN_ID, UNDERLYING_SYMBOL } from "@/lib/wagmi";
+import { lineaClientTransport } from "@/lib/rpc";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
@@ -30,7 +31,10 @@ const MAX_SUPPLY = 1_000_000_000n * 10n ** 18n;
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD" as const;
 
 const chain = DEFAULT_CHAIN_ID === 59144 ? linea : baseSepolia;
-const client = createPublicClient({ chain, transport: http(RPC) });
+const client = createPublicClient({
+  chain,
+  transport: DEFAULT_CHAIN_ID === 59144 ? lineaClientTransport() : http(RPC),
+});
 
 const strategyAbi = [
   { type: "function", name: "currentFees", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },

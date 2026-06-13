@@ -1,5 +1,6 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient } from "viem";
 import { linea } from "viem/chains";
+import { lineaServerTransport } from "@/lib/rpc";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { ADDR } from "@/lib/wagmi";
 
@@ -17,12 +18,7 @@ import { ADDR } from "@/lib/wagmi";
  */
 export const runtime = "nodejs";
 
-const RPC_URL =
-  process.env.LINEA_RPC_URL_SERVER ||
-  process.env.LINEA_RPC_URL ||
-  "https://rpc.linea.build";
-
-const client = createPublicClient({ chain: linea, transport: http(RPC_URL) });
+const client = createPublicClient({ chain: linea, transport: lineaServerTransport() });
 
 const DEAD = "0x000000000000000000000000000000000000dEaD" as `0x${string}`;
 

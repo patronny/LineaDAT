@@ -1,5 +1,6 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient } from "viem";
 import { linea } from "viem/chains";
+import { lineaServerTransport } from "@/lib/rpc";
 import { strategyAbi } from "@/lib/abis/strategy";
 import { erc20Abi } from "@/lib/abis/erc20";
 import {
@@ -81,12 +82,7 @@ const LINEA_WETH = "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f" as const;
 const CANONICAL_LINEA = "0x1789e0043623282D5DCc7F213d703C6D8BAfBB04" as const;
 const ETHEREX_TICK_SPACING = 50;
 
-const RPC_URL =
-  process.env.LINEA_RPC_URL_SERVER ||
-  process.env.LINEA_RPC_URL ||
-  "https://rpc.linea.build";
-
-const client = createPublicClient({ chain: linea, transport: http(RPC_URL) });
+const client = createPublicClient({ chain: linea, transport: lineaServerTransport() });
 
 const DEAD = "0x000000000000000000000000000000000000dEaD" as `0x${string}`;
 const STRATEGY = ADDR.strategy;
